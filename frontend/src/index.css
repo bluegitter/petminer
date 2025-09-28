@@ -34,7 +34,7 @@ body {
 }
 
 .typing-cursor::after {
-  content: '▌';
+  content: '\258C';
   animation: blink 1s infinite;
 }
 
