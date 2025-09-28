@@ -4,6 +4,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import Terminal from './components/Terminal';
 import PetCard from './components/PetCard';
 import CreatePetForm from './components/CreatePetForm';
+import Logo from './components/Logo';
 import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import './index.css';
 
@@ -11,6 +12,7 @@ function App() {
   const [pets, setPets] = useState([]);
   const [selectedPet, setSelectedPet] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
   const { events, connectionStatus } = useWebSocket();
 
   useEffect(() => {
@@ -78,9 +80,21 @@ function App() {
     <div className="min-h-screen bg-terminal-bg text-terminal-text p-4">
       <header className="mb-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-terminal-accent">
-            🐾 MiningPet
-          </h1>
+          <div className="flex items-center gap-3">
+            {!logoError ? (
+              <img 
+                src="/logo.png" 
+                alt="MiningPet Logo" 
+                className="w-10 h-10 rounded-lg"
+                onError={() => setLogoError(true)}
+              />
+            ) : (
+              <Logo className="w-10 h-10" />
+            )}
+            <h1 className="text-3xl font-bold text-terminal-accent">
+              MiningPet
+            </h1>
+          </div>
           <div className="flex items-center gap-2 text-sm">
             {getConnectionStatusIcon()}
             <span>{connectionStatus}</span>

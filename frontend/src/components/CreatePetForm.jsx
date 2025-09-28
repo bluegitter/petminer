@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { User, Plus } from 'lucide-react';
+import Logo from './Logo';
 
 const CreatePetForm = ({ onCreatePet }) => {
   const [ownerName, setOwnerName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [logoError, setLogoError] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,6 +25,16 @@ const CreatePetForm = ({ onCreatePet }) => {
   return (
     <div className="bg-black border border-terminal-text rounded-lg p-6">
       <h2 className="text-xl font-bold text-terminal-accent mb-4 flex items-center gap-2">
+        {!logoError ? (
+          <img 
+            src="/logo.png" 
+            alt="Pet Icon" 
+            className="w-5 h-5 rounded"
+            onError={() => setLogoError(true)}
+          />
+        ) : (
+          <Logo className="w-5 h-5" />
+        )}
         <Plus className="w-5 h-5" />
         创建新宠物
       </h2>

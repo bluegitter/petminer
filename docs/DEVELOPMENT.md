@@ -97,6 +97,7 @@ npm start
 - Tailwind CSS
 - Lucide图标
 - WebSocket客户端
+- 自适应Logo系统（PNG + SVG fallback）
 
 ## 开发建议
 
@@ -114,6 +115,13 @@ npm start
 - 实现数据库接口
 - 添加Redis缓存层
 - 修改服务层以支持持久化
+
+### Logo系统
+项目使用自适应Logo系统：
+1. 优先使用 `/frontend/public/logo.png`
+2. 如果PNG加载失败，自动fallback到SVG Logo组件
+3. Logo会显示在页面标题和创建宠物表单中
+4. 支持不同尺寸适配（w-5 h-5, w-10 h-10等）
 
 ## 性能优化
 
