@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #0a0a0a;
+  color: #00ff00;
+}
+
+.terminal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #00ff00 #0a0a0a;
+}
+
+.terminal-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.terminal-scroll::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb {
+  background: #00ff00;
+  border-radius: 4px;
+}
+
+.terminal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #44ff44;
+}
+
+.typing-cursor::after {
+  content: '▌';
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
