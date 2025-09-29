@@ -161,7 +161,7 @@ function App() {
       <main className="container px-4 py-3 mx-auto md:py-6">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-12 md:gap-6">
           {/* 左侧宠物面板 - 手机端更紧凑 */}
-          <div className="space-y-2 lg:col-span-5 xl:col-span-4 md:space-y-4 animate-slide-in-left">
+          <div className="space-y-2 lg:col-span-5 xl:col-span-4 md:space-y-5 animate-slide-in-left">
             {pets.length === 0 ? (
               <div className="animate-slide-in-up">
                 <CreatePetForm onCreatePet={handleCreatePet} />
@@ -181,7 +181,7 @@ function App() {
                 
                 {/* 宠物信息面板 */}
                 <div className="p-1 bg-black border rounded-lg shadow-lg border-terminal-text md:p-2 animate-slide-in-up card-hover" style={{animationDelay: '0.2s'}}>
-                  <h3 className="flex items-center gap-2 mb-1 text-sm font-bold md:text-base text-terminal-accent text-glow">
+                  <h3 className="flex items-center gap-2 mb-2 text-sm font-bold md:mb-3 md:text-base text-terminal-accent text-glow">
                     <span className="animate-float">🏠</span> 
                     <span className="hidden md:inline">我的宠物</span>
                     <span className="md:hidden">宠物</span>
@@ -223,7 +223,7 @@ function App() {
                   </div>
                   
                   {/* 单宠物限制提示 */}
-                  <div className="p-1 mt-1 bg-blue-900 border border-blue-500 rounded-lg md:p-2 bg-opacity-30 border-opacity-30">
+                  <div className="p-1 mt-1 bg-blue-900 border border-blue-500 rounded-lg md:p-1 bg-opacity-30 border-opacity-30">
                     <div className="flex items-start gap-2">
                       <span className="text-lg">🔒</span>
                       <div className="text-xs text-gray-300">
