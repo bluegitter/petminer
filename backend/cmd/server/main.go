@@ -70,6 +70,7 @@ func main() {
 		api.GET("/pets", petHandler.GetAllPets)
 		api.GET("/pets/:id", petHandler.GetPet)
 		api.GET("/pets/:id/status", petHandler.GetPetStatus)
+		api.GET("/pets/:id/friends", petHandler.GetPetFriends)
 		
 		// 宠物行为操作
 		api.POST("/pets/:id/explore", petHandler.StartExploration)

@@ -162,3 +162,21 @@ func (h *PetHandler) GetPetStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, status)
 }
+
+// GetPetFriends 获取宠物朋友列表
+func (h *PetHandler) GetPetFriends(c *gin.Context) {
+	petID := c.Param("id")
+	
+	pet, exists := h.petService.GetPet(petID)
+	if !exists {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Pet not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"pet_id":  petID,
+		"pet_name": pet.Name,
+		"friends": pet.Friends,
+		"count":   len(pet.Friends),
+	})
+}

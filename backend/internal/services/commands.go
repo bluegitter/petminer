@@ -28,6 +28,8 @@ func (ps *PetService) ExecuteCommand(petID, command string, params map[string]in
 		return ps.executeExploreCommand(pet, params)
 	case "addcoins":
 		return ps.executeAddCoinsCommand(pet, params)
+	case "friends":
+		return ps.executeFriendsCommand(pet, params)
 	default:
 		return nil, fmt.Errorf("unknown command: %s", command)
 	}
@@ -320,5 +322,14 @@ func (ps *PetService) executeAddCoinsCommand(pet *models.Pet, params map[string]
 		"old_coins": oldCoins,
 		"new_coins": pet.Coins,
 		"message":   fmt.Sprintf("%s 获得了 %d 金币！当前总金币: %d", pet.Name, amount, pet.Coins),
+	}, nil
+}
+
+func (ps *PetService) executeFriendsCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	return map[string]interface{}{
+		"action":  "friends",
+		"friends": pet.Friends,
+		"count":   len(pet.Friends),
+		"message": fmt.Sprintf("%s 的朋友列表", pet.Name),
 	}, nil
 }
