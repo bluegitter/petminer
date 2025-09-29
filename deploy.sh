@@ -340,7 +340,14 @@ set -e
 echo "开始远程服务器配置..."
 
 # 创建应用目录
-mkdir -p /app/bin /app/static /app/logs
+mkdir -p /app/bin /app/static /app/logs /app/data
+
+# 备份现有数据库（如果存在）
+if [ -f /app/data/petminer.db ]; then
+    echo "备份现有数据库..."
+    cp /app/data/petminer.db /app/data/petminer.db.backup.$(date +%Y%m%d_%H%M%S)
+    echo "数据库备份完成"
+fi
 
 # 设置权限
 chmod +x /app/bin/petminer-server
@@ -408,9 +415,9 @@ EOF
 upload_files() {
     log "上传文件到服务器..."
     
-    # 使用rsync同步文件
+    # 使用rsync同步文件，排除数据目录以保留数据库
     progress "同步应用文件..."
-    rsync -avz -e "ssh -p $REMOTE_PORT" --delete "$LOCAL_BUILD_DIR/" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_APP_DIR/"
+    rsync -avz -e "ssh -p $REMOTE_PORT" --delete --exclude='data/' --exclude='*.db' "$LOCAL_BUILD_DIR/" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_APP_DIR/"
     
     # 验证上传
     ssh -p "$REMOTE_PORT" "$REMOTE_USER@$REMOTE_HOST" bash << EOF
@@ -513,6 +520,7 @@ show_deployment_summary() {
     echo "  应用目录: $REMOTE_APP_DIR"
     echo "  静态文件: $REMOTE_STATIC_DIR"
     echo "  二进制文件: $REMOTE_BIN_DIR/$PROJECT_NAME-server"
+    echo "  数据库目录: $REMOTE_APP_DIR/data (持久化保留)"
     echo "  服务配置: /etc/systemd/system/petminer.service"
     echo "  Nginx配置: /etc/nginx/nginx.conf"
     echo ""
@@ -559,6 +567,7 @@ PetMiner 一键部署脚本
 - 确保已配置SSH免密登录
 - 确保远程服务器已安装Go和Node.js环境
 - 部署会自动配置systemd服务和nginx
+- 数据库文件(/app/data/)在部署时会被保留
 
 EOF
 }
