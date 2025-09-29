@@ -408,7 +408,7 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
       {/* 终端内容 */}
       <div 
         ref={terminalRef}
-        className="overflow-y-auto p-3 font-mono text-xs bg-transparent md:p-4 terminal-scroll text-terminal-text md:text-sm responsive-cli-content md:responsive-terminal-content"
+        className="p-3 overflow-y-auto font-mono text-xs bg-transparent md:p-4 terminal-scroll text-terminal-text md:text-sm responsive-cli-content md:responsive-terminal-content"
       >
         {history.map((entry, index) => (
           <div key={index} className={`mb-1 ${getMessageStyle(entry.type)}`}>
@@ -425,16 +425,16 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
       </div>
 
       {/* 输入区域 */}
-      <form onSubmit={handleSubmit} className="flex-shrink-0 p-2 bg-purple-900 border-t border-purple-500 bg-opacity-30 md:p-3">
+      <form onSubmit={handleSubmit} className="flex-shrink-0 p-2 bg-green-900 border-t border-green-500 bg-opacity-30 md:p-3">
         <div className="flex items-center gap-2">
-          <span className="flex-shrink-0 font-mono text-sm text-purple-400">{'>'}</span>
+          <span className="flex-shrink-0 font-mono text-sm text-green-400">{'>'}</span>
           <input
             ref={inputRef}
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            className="flex-1 font-mono text-sm placeholder-gray-500 bg-transparent outline-none text-terminal-text caret-purple-400"
+            className="flex-1 font-mono text-sm placeholder-gray-500 bg-transparent outline-none text-terminal-text caret-green-400"
             placeholder="输入命令..."
             autoComplete="off"
             spellCheck="false"
@@ -442,7 +442,7 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
           />
           <button
             type="submit"
-            className="p-1 text-purple-400 transition-colors hover:text-terminal-text"
+            className="p-1 text-green-400 transition-colors hover:text-terminal-text"
             disabled={!input.trim()}
           >
             <Send className="w-4 h-4" />
