@@ -29,7 +29,12 @@ func (h *PetHandler) CreatePet(c *gin.Context) {
 		return
 	}
 
-	pet := h.petService.CreatePet(req.OwnerName)
+	pet, err := h.petService.CreatePet(req.OwnerName)
+	if err != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusCreated, pet)
 }
 
@@ -71,4 +76,89 @@ func (h *PetHandler) GetEvents(c *gin.Context) {
 
 	events := h.petService.GetRecentEvents(limit)
 	c.JSON(http.StatusOK, gin.H{"events": events})
+}
+
+type CommandRequest struct {
+	Command string                 `json:"command" binding:"required"`
+	Params  map[string]interface{} `json:"params"`
+}
+
+// ExecuteCommand 执行宠物指令
+func (h *PetHandler) ExecuteCommand(c *gin.Context) {
+	petID := c.Param("id")
+	
+	var req CommandRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.petService.ExecuteCommand(petID, req.Command, req.Params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"result": result, "message": "Command executed successfully"})
+}
+
+// RestPet 让宠物休息
+func (h *PetHandler) RestPet(c *gin.Context) {
+	petID := c.Param("id")
+	
+	err := h.petService.RestPet(petID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pet is now resting"})
+}
+
+// FeedPet 给宠物喂食
+func (h *PetHandler) FeedPet(c *gin.Context) {
+	petID := c.Param("id")
+	
+	type FeedRequest struct {
+		Amount int `json:"amount"`
+	}
+	
+	var req FeedRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		req.Amount = 20 // 默认喂食量
+	}
+
+	err := h.petService.FeedPet(petID, req.Amount)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pet has been fed"})
+}
+
+// SocializePet 让宠物社交
+func (h *PetHandler) SocializePet(c *gin.Context) {
+	petID := c.Param("id")
+	
+	err := h.petService.SocializePet(petID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Pet is now socializing"})
+}
+
+// GetPetStatus 获取宠物详细状态
+func (h *PetHandler) GetPetStatus(c *gin.Context) {
+	petID := c.Param("id")
+	
+	status, err := h.petService.GetPetStatus(petID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, status)
 }

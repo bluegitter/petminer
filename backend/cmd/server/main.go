@@ -47,14 +47,29 @@ func main() {
 
 	api := r.Group("/api/v1")
 	{
+		// 基础宠物操作
 		api.POST("/pets", petHandler.CreatePet)
 		api.GET("/pets", petHandler.GetAllPets)
 		api.GET("/pets/:id", petHandler.GetPet)
+		api.GET("/pets/:id/status", petHandler.GetPetStatus)
+		
+		// 宠物行为操作
 		api.POST("/pets/:id/explore", petHandler.StartExploration)
+		api.POST("/pets/:id/rest", petHandler.RestPet)
+		api.POST("/pets/:id/feed", petHandler.FeedPet)
+		api.POST("/pets/:id/socialize", petHandler.SocializePet)
+		api.POST("/pets/:id/command", petHandler.ExecuteCommand)
+		
+		// 事件
 		api.GET("/events", petHandler.GetEvents)
 	}
 
 	r.GET("/ws", hub.HandleWebSocket)
+
+	// 健康检查端点
+	r.GET("/health", func(c *gin.Context) {
+		c.String(200, "healthy")
+	})
 
 	// 获取端口配置，默认8081用于容器内部
 	port := os.Getenv("PORT")
