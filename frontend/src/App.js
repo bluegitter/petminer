@@ -78,6 +78,10 @@ function App() {
     }
   };
 
+  const handlePetUpdate = async () => {
+    await loadPets();
+  };
+
   const handleCLICommand = async (command, params) => {
     try {
       switch (command) {
@@ -172,9 +176,10 @@ function App() {
                 <div className="relative animate-slide-in-up">
                   <div className="absolute rounded-lg opacity-25 -inset-1 bg-gradient-to-r from-terminal-accent to-blue-400 blur animate-glow"></div>
                   <div className="relative card-hover">
-                    <PetCard 
-                      pet={selectedPet} 
+                    <PetCard
+                      pet={selectedPet}
                       onStartExploration={handleStartExploration}
+                      onPetUpdate={handlePetUpdate}
                     />
                   </div>
                 </div>

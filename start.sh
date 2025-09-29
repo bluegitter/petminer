@@ -26,7 +26,7 @@ cd ..
 
 # 等待后端启动
 echo "⏳ 等待后端服务器启动..."
-sleep 3
+sleep 10 
 
 # 检查后端是否运行
 if ! curl -s http://localhost:8081/api/v1/pets > /dev/null; then
