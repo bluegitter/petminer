@@ -274,7 +274,7 @@ function App() {
       </main>
 
       {/* 底部状态栏 - 手机端简化 */}
-      <footer className="mt-4 bg-black bg-opacity-50 border-t border-terminal-text md:mt-8">
+      <footer className="mt-0 bg-black bg-opacity-50 border-t border-terminal-text">
         <div className="container px-4 py-3 mx-auto md:py-4">
           <div className="flex flex-col items-center justify-between gap-2 sm:flex-row md:gap-4">
             <div className="text-center sm:text-left">
