@@ -29,7 +29,7 @@ echo "⏳ 等待后端服务器启动..."
 sleep 3
 
 # 检查后端是否运行
-if ! curl -s http://localhost:8080/api/v1/pets > /dev/null; then
+if ! curl -s http://localhost:8081/api/v1/pets > /dev/null; then
     echo "❌ 后端服务器启动失败"
     kill $BACKEND_PID 2>/dev/null
     exit 1
@@ -55,7 +55,7 @@ echo "✅ 前端开发服务器启动成功 (PID: $FRONTEND_PID)"
 echo ""
 echo "🎮 游戏已启动!"
 echo "前端地址: http://localhost:3000"
-echo "后端API: http://localhost:8080"
+echo "后端API: http://localhost:8081"
 echo ""
 echo "按 Ctrl+C 停止所有服务"
 
