@@ -53,6 +53,16 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
       description: '清空终端',
       usage: 'clear',
       examples: ['clear']
+    },
+    addcoins: {
+      description: '给宠物添加金币（调试用）',
+      usage: 'addcoins [amount]',
+      examples: ['addcoins', 'addcoins 100']
+    },
+    friends: {
+      description: '查看宠物的好友列表',
+      usage: 'friends',
+      examples: ['friends']
     }
   };
 
@@ -104,6 +114,12 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
           break;
         case 'clear':
           handleClearCommand();
+          break;
+        case 'addcoins':
+          handleAddCoinsCommand(args[0]);
+          break;
+        case 'friends':
+          handleFriendsCommand();
           break;
         default:
           addToHistory('error', `未知命令: ${command}. 输入 "help" 查看可用命令.`);
@@ -258,6 +274,67 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
       { type: 'system', content: '🚀 MiningPet CLI v1.0 已启动' },
       { type: 'system', content: '输入 "help" 查看可用命令' },
     ]);
+  };
+
+  const handleAddCoinsCommand = async (amount) => {
+    if (!selectedPet) {
+      addToHistory('error', '未选择宠物');
+      return;
+    }
+
+    const coinAmount = amount ? parseInt(amount) : 100;
+    if (isNaN(coinAmount) || coinAmount <= 0) {
+      addToHistory('error', '金币数量必须是正整数');
+      return;
+    }
+
+    addToHistory('system', `💰 给 ${selectedPet.name} 添加 ${coinAmount} 金币...`);
+    
+    if (onCommand) {
+      try {
+        await onCommand('addcoins', { petId: selectedPet.id, amount: coinAmount });
+        addToHistory('system', `✅ ${selectedPet.name} 获得了 ${coinAmount} 金币！`);
+      } catch (error) {
+        const errorMessage = error.response?.data?.error || error.message || '添加金币命令执行失败';
+        addToHistory('error', `❌ 添加金币失败: ${errorMessage}`);
+      }
+    }
+  };
+
+  const handleFriendsCommand = () => {
+    if (!selectedPet) {
+      addToHistory('error', '未选择宠物');
+      return;
+    }
+
+    addToHistory('system', `👥 ${selectedPet.name} 的好友列表:`);
+    
+    if (selectedPet.friends && selectedPet.friends.length > 0) {
+      addToHistory('system', `  总共 ${selectedPet.friends.length} 位好友:`);
+      selectedPet.friends.forEach((friend, index) => {
+        addToHistory('system', `  ${index + 1}. ${friend}`);
+      });
+      
+      // 显示社交统计
+      addToHistory('system', '');
+      addToHistory('system', `📊 社交统计:`);
+      addToHistory('system', `  社交度: ${selectedPet.social || 0}/100`);
+      addToHistory('system', `  好友数量: ${selectedPet.friends.length}`);
+      
+      // 根据好友数量给出建议
+      if (selectedPet.friends.length >= 5) {
+        addToHistory('system', `  🌟 ${selectedPet.name} 是个社交达人！`);
+      } else if (selectedPet.friends.length >= 2) {
+        addToHistory('system', `  😊 ${selectedPet.name} 有不错的社交圈`);
+      } else {
+        addToHistory('system', `  💡 建议多使用 'socialize' 命令交朋友`);
+      }
+    } else {
+      addToHistory('system', '  暂无好友');
+      addToHistory('system', '');
+      addToHistory('system', '💡 使用 "socialize" 命令让宠物主动社交交朋友！');
+      addToHistory('system', '🤝 通过社交可以提升宠物的心情和社交度');
+    }
   };
 
   const handleSubmit = (e) => {

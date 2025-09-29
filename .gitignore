@@ -5,6 +5,7 @@
 node_modules/
 dist/
 build/
+backend/data/
 
 # Go
 *.exe
@@ -31,6 +32,9 @@ yarn-error.log*
 .idea/
 *.swp
 *.swo
+
+# Claude Code
+.claude/
 
 # 操作系统
 Thumbs.db

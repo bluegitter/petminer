@@ -2,51 +2,119 @@ package services
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
 
+	"miningpet/internal/database"
 	"miningpet/internal/models"
 	"github.com/google/uuid"
 )
 
 type PetService struct {
-	pets     map[string]*models.Pet
-	events   []models.Event
-	mutex    sync.RWMutex
-	eventsCh chan models.Event
-	aiEngine *AIEngine
-	activePets map[string]*time.Ticker // 活跃的宠物和它们的ticker
+	pets         map[string]*models.Pet
+	events       []models.Event
+	mutex        sync.RWMutex
+	eventsCh     chan models.Event
+	aiEngine     *AIEngine
+	activePets   map[string]*time.Ticker // 活跃的宠物和它们的ticker
+	recentEvents map[string]time.Time    // 最近事件缓存，用于去重
+	
+	// 数据库仓库
+	petRepo   *database.PetRepository
+	eventRepo *database.EventRepository
 }
 
 func NewPetService() *PetService {
 	ps := &PetService{
-		pets:       make(map[string]*models.Pet),
-		events:     make([]models.Event, 0),
-		mutex:      sync.RWMutex{},
-		eventsCh:   make(chan models.Event, 100),
-		aiEngine:   NewAIEngine(),
-		activePets: make(map[string]*time.Ticker),
+		pets:         make(map[string]*models.Pet),
+		events:       make([]models.Event, 0),
+		mutex:        sync.RWMutex{},
+		eventsCh:     make(chan models.Event, 100),
+		aiEngine:     NewAIEngine(),
+		activePets:   make(map[string]*time.Ticker),
+		recentEvents: make(map[string]time.Time),
+		petRepo:      database.NewPetRepository(),
+		eventRepo:    database.NewEventRepository(),
+	}
+	
+	// 从数据库加载现有的宠物
+	if err := ps.loadPetsFromDatabase(); err != nil {
+		log.Printf("Warning: failed to load pets from database: %v", err)
 	}
 	
 	// 启动全局AI循环
 	go ps.runGlobalAI()
 	
+	// 启动已存在宠物的AI
+	ps.startExistingPetsAI()
+	
 	return ps
+}
+
+// loadPetsFromDatabase 从数据库加载所有宠物到内存
+func (ps *PetService) loadPetsFromDatabase() error {
+	pets, err := ps.petRepo.GetAllPets()
+	if err != nil {
+		return fmt.Errorf("failed to load pets from database: %w", err)
+	}
+
+	for _, pet := range pets {
+		ps.pets[pet.ID] = pet
+	}
+
+	log.Printf("Loaded %d pets from database", len(pets))
+	return nil
+}
+
+// startExistingPetsAI 为所有已存在的宠物启动AI
+func (ps *PetService) startExistingPetsAI() {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	for _, pet := range ps.pets {
+		if pet.IsAlive() {
+			ps.startPetAI(pet)
+		}
+	}
+}
+
+// savePetToDatabase 保存宠物状态到数据库（异步执行以避免阻塞）
+func (ps *PetService) savePetToDatabase(pet *models.Pet) {
+	go func() {
+		if err := ps.petRepo.UpdatePet(pet); err != nil {
+			log.Printf("Warning: failed to save pet %s to database: %v", pet.ID, err)
+		}
+	}()
 }
 
 func (ps *PetService) CreatePet(ownerName string) (*models.Pet, error) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
 
-	// 检查该用户是否已经有宠物
+	// 检查该用户是否已经有宠物（先检查内存，再检查数据库）
 	for _, existingPet := range ps.pets {
 		if existingPet.Owner == ownerName {
 			return nil, fmt.Errorf("用户 %s 已经拥有宠物 %s，每位训练师只能拥有一只宠物", ownerName, existingPet.Name)
 		}
 	}
 
+	// 检查数据库中是否已有该用户的宠物
+	if existingPet, err := ps.petRepo.GetPetByOwner(ownerName); err != nil {
+		log.Printf("Error checking existing pet in database: %v", err)
+	} else if existingPet != nil {
+		return nil, fmt.Errorf("用户 %s 已经拥有宠物 %s，每位训练师只能拥有一只宠物", ownerName, existingPet.Name)
+	}
+
 	pet := models.NewPet(ownerName)
+	
+	// 保存到数据库
+	if err := ps.petRepo.CreatePet(pet); err != nil {
+		return nil, fmt.Errorf("failed to save pet to database: %w", err)
+	}
+	
+	// 保存到内存
 	ps.pets[pet.ID] = pet
 
 	event := models.Event{
@@ -165,19 +233,33 @@ func (ps *PetService) GetAllPets() []*models.Pet {
 }
 
 func (ps *PetService) GetRecentEvents(limit int) []models.Event {
-	ps.mutex.RLock()
-	defer ps.mutex.RUnlock()
-	
-	if limit <= 0 || limit > len(ps.events) {
-		limit = len(ps.events)
+	// 首先尝试从数据库获取最近的事件
+	dbEvents, err := ps.eventRepo.GetRecentEvents(limit)
+	if err != nil {
+		log.Printf("Warning: failed to get events from database: %v", err)
+		// 如果数据库查询失败，从内存中获取
+		ps.mutex.RLock()
+		defer ps.mutex.RUnlock()
+		
+		if limit <= 0 || limit > len(ps.events) {
+			limit = len(ps.events)
+		}
+		
+		start := len(ps.events) - limit
+		if start < 0 {
+			start = 0
+		}
+		
+		return ps.events[start:]
 	}
 	
-	start := len(ps.events) - limit
-	if start < 0 {
-		start = 0
+	// 转换数据库事件为slice并返回
+	events := make([]models.Event, len(dbEvents))
+	for i, event := range dbEvents {
+		events[i] = *event
 	}
 	
-	return ps.events[start:]
+	return events
 }
 
 func (ps *PetService) GetEventChannel() <-chan models.Event {
@@ -197,30 +279,42 @@ func (ps *PetService) StartExploration(petID string) error {
 		return fmt.Errorf("pet is not alive")
 	}
 
-	pet.Status = "探索中"
+	// 如果已经在探索中，不重复启动
+	if pet.Status == "探索中" {
+		return fmt.Errorf("pet is already exploring")
+	}
+
+	// 设置为探索状态，让AI决策系统接管
+	pet.Status = models.StatusExploring
 	pet.LastActivity = time.Now()
 	
-	go ps.exploreLoop(pet)
+	// 发送一个提示消息
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventExplore,
+		Message:   fmt.Sprintf("[%s] 收到探索指令，开始探索冒险...", pet.Name),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Location: pet.Location},
+	}
+	ps.addEvent(event)
+	
+	// 立即触发一次AI决策，让宠物开始探索行为
+	go func() {
+		time.Sleep(2 * time.Second) // 短暂延迟，让用户看到状态变化
+		ps.mutex.Lock()
+		if currentPet, exists := ps.pets[pet.ID]; exists && currentPet.Status == models.StatusExploring {
+			action := ps.aiEngine.DecideNextAction(currentPet)
+			ps.executeAction(currentPet, action)
+		}
+		ps.mutex.Unlock()
+	}()
+	
 	return nil
 }
 
-func (ps *PetService) exploreLoop(pet *models.Pet) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		ps.mutex.Lock()
-		if pet.Status != "探索中" || !pet.IsAlive() {
-			ps.mutex.Unlock()
-			break
-		}
-		
-		event := ps.generateRandomEvent(pet)
-		ps.addEvent(event)
-		pet.LastActivity = time.Now()
-		ps.mutex.Unlock()
-	}
-}
+// exploreLoop 函数已移除，现在完全由AI决策系统控制探索行为
 
 func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 	eventTypes := []models.EventType{
@@ -270,9 +364,19 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 	case models.EventDiscovery:
 		coins := rand.Intn(20) + 5
 		pet.Coins += coins
-		discoveries := []string{"宝箱", "神秘水晶", "古老卷轴", "闪光宝石", "魔法药水"}
+		discoveries := []string{"宝箱", "神秘水晶", "古老卷轴", "闪光宝石", "魔法药水", "远古符文", "珍稀矿石", "神秘遗物"}
 		discovery := discoveries[rand.Intn(len(discoveries))]
-		event.Message = fmt.Sprintf("[%s] 发现了%s，获得%d金币！", pet.Name, discovery, coins)
+		
+		// 增加发现事件的消息变化性
+		discoveryMessages := []string{
+			"发现了%s，获得%d金币！",
+			"在探索中找到%s，收获%d金币！", 
+			"意外挖掘出%s，得到%d金币奖励！",
+			"仔细搜索后发现%s，获得%d金币！",
+			"幸运地遇到%s，赚得%d金币！",
+		}
+		messageTemplate := discoveryMessages[rand.Intn(len(discoveryMessages))]
+		event.Message = fmt.Sprintf("[%s] %s", pet.Name, fmt.Sprintf(messageTemplate, discovery, coins))
 		event.Data.Coins = coins
 
 	case models.EventSocial:
@@ -291,7 +395,18 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 		} else {
 			coins := rand.Intn(50) + 10
 			pet.Coins += coins
-			event.Message = fmt.Sprintf("[%s] 找到了一些零散的金币：+%d", pet.Name, coins)
+			
+			// 增加消息变化性，避免重复
+			rewardMessages := []string{
+				"找到了一些零散的金币：+%d",
+				"发现了闪闪发光的硬币：+%d",
+				"从地上捡到了金币：+%d", 
+				"在岩石缝隙中发现金币：+%d",
+				"挖出了埋在土里的金币：+%d",
+				"在古老树根下找到金币：+%d",
+			}
+			messageTemplate := rewardMessages[rand.Intn(len(rewardMessages))]
+			event.Message = fmt.Sprintf("[%s] %s", pet.Name, fmt.Sprintf(messageTemplate, coins))
 			event.Data.Coins = coins
 		}
 	}
@@ -341,6 +456,36 @@ func (ps *PetService) simulateBattle(pet *models.Pet, monster models.Monster) bo
 }
 
 func (ps *PetService) addEvent(event models.Event) {
+	// 生成更精确的事件指纹，包含金币数量信息
+	eventKey := fmt.Sprintf("%s:%s:%s", event.PetID, event.Type, event.Message)
+	
+	// 对于包含金币的事件，增加金币数量到指纹中
+	if event.Data.Coins != 0 {
+		eventKey = fmt.Sprintf("%s:coins:%d", eventKey, event.Data.Coins)
+	}
+	
+	// 检查是否是重复事件（15秒内相同内容的事件视为重复）
+	if lastTime, exists := ps.recentEvents[eventKey]; exists {
+		if time.Since(lastTime) < 15*time.Second {
+			return // 跳过重复事件
+		}
+	}
+	
+	// 记录事件时间
+	ps.recentEvents[eventKey] = event.Timestamp
+	
+	// 清理过期的事件记录（超过60秒的记录）
+	for key, timestamp := range ps.recentEvents {
+		if time.Since(timestamp) > 60*time.Second {
+			delete(ps.recentEvents, key)
+		}
+	}
+	
+	// 保存到数据库
+	if err := ps.eventRepo.CreateEvent(&event); err != nil {
+		log.Printf("Warning: failed to save event to database: %v", err)
+	}
+	
 	ps.events = append(ps.events, event)
 	if len(ps.events) > 1000 {
 		ps.events = ps.events[100:]
@@ -388,8 +533,8 @@ func (ps *PetService) startPetAI(pet *models.Pet) {
 				return
 			}
 
-			// 如果宠物在忙碌状态，跳过此次决策
-			if currentPet.Status != models.StatusIdle {
+			// 如果宠物在忙碌状态，跳过此次决策（但探索状态下允许决策）
+			if currentPet.Status != models.StatusIdle && currentPet.Status != "等待中" && currentPet.Status != models.StatusExploring {
 				ps.mutex.Unlock()
 				continue
 			}
@@ -515,6 +660,9 @@ func (ps *PetService) executeRestAction(pet *models.Pet, action Action) {
 				Message:   fmt.Sprintf("[%s] 休息完毕，恢复了%d点体力", pet.Name, restoreAmount),
 				Timestamp: time.Now(),
 			})
+			
+			// 保存宠物状态到数据库
+			ps.savePetToDatabase(pet)
 		}
 		ps.mutex.Unlock()
 	}()
@@ -568,6 +716,9 @@ func (ps *PetService) executeSocializeAction(pet *models.Pet, action Action) {
 				Message:   fmt.Sprintf("[%s] 社交结束，心情变好了", pet.Name),
 				Timestamp: time.Now(),
 			})
+			
+			// 保存宠物状态到数据库
+			ps.savePetToDatabase(pet)
 		}
 		ps.mutex.Unlock()
 	}()
@@ -576,7 +727,9 @@ func (ps *PetService) executeSocializeAction(pet *models.Pet, action Action) {
 // executeEatAction 执行进食行为
 func (ps *PetService) executeEatAction(pet *models.Pet, action Action) {
 	if pet.Coins < 10 {
-		// 没钱买食物，寻找免费食物
+		// 没钱买食物，设置状态为寻找食物
+		pet.Status = "寻找食物"
+		
 		event := models.Event{
 			ID:        uuid.New().String(),
 			PetID:     pet.ID,
@@ -587,26 +740,73 @@ func (ps *PetService) executeEatAction(pet *models.Pet, action Action) {
 		}
 		ps.addEvent(event)
 		
-		feedAmount := 10 + rand.Intn(15)
-		pet.Feed(feedAmount)
+		// 延迟执行，模拟寻找食物的过程
+		go func() {
+			time.Sleep(time.Duration(action.Duration) * time.Second)
+			ps.mutex.Lock()
+			if pet.Status == "寻找食物" {
+				feedAmount := 10 + rand.Intn(15)
+				pet.Feed(feedAmount)
+				pet.Status = models.StatusIdle
+				
+				// 发送找到食物的消息
+				foundEvent := models.Event{
+					ID:        uuid.New().String(),
+					PetID:     pet.ID,
+					PetName:   pet.Name,
+					Type:      models.EventReward,
+					Message:   fmt.Sprintf("[%s] 找到了一些免费食物，饱食度+%d", pet.Name, feedAmount),
+					Timestamp: time.Now(),
+				}
+				ps.addEvent(foundEvent)
+				
+				// 保存宠物状态到数据库
+				ps.savePetToDatabase(pet)
+			}
+			ps.mutex.Unlock()
+		}()
 	} else {
 		// 花钱买食物
 		cost := 10 + rand.Intn(10)
 		if pet.Coins >= cost {
+			pet.Status = "进食中"
 			pet.Coins -= cost
-			feedAmount := 25 + rand.Intn(20)
-			pet.Feed(feedAmount)
 			
 			event := models.Event{
 				ID:        uuid.New().String(),
 				PetID:     pet.ID,
 				PetName:   pet.Name,
 				Type:      models.EventReward,
-				Message:   fmt.Sprintf("[%s] 花费%d金币买了美味的食物，饱食度+%d", pet.Name, cost, feedAmount),
+				Message:   fmt.Sprintf("[%s] 购买食物中...", pet.Name),
 				Timestamp: time.Now(),
-				Data:      models.EventData{Coins: -cost},
 			}
 			ps.addEvent(event)
+			
+			// 延迟执行进食过程
+			go func() {
+				time.Sleep(time.Duration(action.Duration) * time.Second)
+				ps.mutex.Lock()
+				if pet.Status == "进食中" {
+					feedAmount := 25 + rand.Intn(20)
+					pet.Feed(feedAmount)
+					pet.Status = models.StatusIdle
+					
+					finishEvent := models.Event{
+						ID:        uuid.New().String(),
+						PetID:     pet.ID,
+						PetName:   pet.Name,
+						Type:      models.EventReward,
+						Message:   fmt.Sprintf("[%s] 花费%d金币买了美味的食物，饱食度+%d", pet.Name, cost, feedAmount),
+						Timestamp: time.Now(),
+						Data:      models.EventData{Coins: -cost},
+					}
+					ps.addEvent(finishEvent)
+					
+					// 保存宠物状态到数据库
+					ps.savePetToDatabase(pet)
+				}
+				ps.mutex.Unlock()
+			}()
 		}
 	}
 }
@@ -617,6 +817,9 @@ func (ps *PetService) processExploreResult(pet *models.Pet) {
 	ps.addEvent(event)
 	pet.Status = models.StatusIdle
 	pet.LastActivity = time.Now()
+	
+	// 保存宠物状态到数据库
+	ps.savePetToDatabase(pet)
 }
 
 // ExecuteCommand 通用命令执行接口
@@ -638,6 +841,8 @@ func (ps *PetService) ExecuteCommand(petID, command string, params map[string]in
 		return ps.executeSocializeCommand(pet, params)
 	case "explore":
 		return ps.executeExploreCommand(pet, params)
+	case "addcoins":
+		return ps.executeAddCoinsCommand(pet, params)
 	default:
 		return nil, fmt.Errorf("unknown command: %s", command)
 	}
@@ -654,7 +859,13 @@ func (ps *PetService) RestPet(petID string) error {
 	}
 
 	if !pet.CanRest() {
-		return fmt.Errorf("pet cannot rest at this time")
+		if !pet.IsAlive() {
+			return fmt.Errorf("宠物已倒下，无法休息（生命值: %d）", pet.Health)
+		}
+		if pet.Status != models.StatusIdle {
+			return fmt.Errorf("宠物当前状态为 %s，无法休息", pet.Status)
+		}
+		return fmt.Errorf("宠物暂时无法休息（状态: %s，生命值: %d）", pet.Status, pet.Health)
 	}
 
 	action := Action{
@@ -907,5 +1118,46 @@ func (ps *PetService) executeExploreCommand(pet *models.Pet, params map[string]i
 		"action":    "explore",
 		"direction": direction,
 		"message":   fmt.Sprintf("%s 开始向 %s 探索", pet.Name, direction),
+	}, nil
+}
+
+// executeAddCoinsCommand 添加金币指令（调试用）
+func (ps *PetService) executeAddCoinsCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	amount := 100 // 默认增加100金币
+	if a, ok := params["amount"].(float64); ok {
+		amount = int(a)
+	}
+	
+	// 验证金币数量合理性
+	if amount <= 0 {
+		return nil, fmt.Errorf("amount must be positive")
+	}
+	if amount > 10000 {
+		return nil, fmt.Errorf("amount too large (max: 10000)")
+	}
+	
+	oldCoins := pet.Coins
+	pet.Coins += amount
+	
+	// 记录事件
+	ps.addEvent(models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      "debug",
+		Message:   fmt.Sprintf("[%s] 调试指令：增加了 %d 金币 (总计: %d)", pet.Name, amount, pet.Coins),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Coins: amount},
+	})
+	
+	// 保存到数据库
+	ps.savePetToDatabase(pet)
+	
+	return map[string]interface{}{
+		"action":    "addcoins",
+		"amount":    amount,
+		"old_coins": oldCoins,
+		"new_coins": pet.Coins,
+		"message":   fmt.Sprintf("%s 获得了 %d 金币！当前总金币: %d", pet.Name, amount, pet.Coins),
 	}, nil
 }
