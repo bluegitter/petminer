@@ -71,6 +71,10 @@ func main() {
 		api.GET("/pets/:id", petHandler.GetPet)
 		api.GET("/pets/:id/status", petHandler.GetPetStatus)
 		
+		// 宠物初始化操作
+		api.POST("/pets/:id/roll-race", petHandler.RollRace)
+		api.POST("/pets/:id/roll-skill", petHandler.RollSkill)
+
 		// 宠物行为操作
 		api.POST("/pets/:id/explore", petHandler.StartExploration)
 		api.POST("/pets/:id/rest", petHandler.RestPet)

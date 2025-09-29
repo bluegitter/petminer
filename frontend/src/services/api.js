@@ -18,6 +18,10 @@ export const petAPI = {
   getAllPets: () => api.get('/pets'),
   getPetStatus: (petId) => api.get(`/pets/${petId}/status`),
   
+  // 宠物初始化
+  rollRace: (petId) => api.post(`/pets/${petId}/roll-race`),
+  rollSkill: (petId) => api.post(`/pets/${petId}/roll-skill`),
+
   // 宠物行为
   startExploration: (petId) => api.post(`/pets/${petId}/explore`),
   restPet: (petId) => api.post(`/pets/${petId}/rest`),

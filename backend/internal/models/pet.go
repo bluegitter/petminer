@@ -1,6 +1,7 @@
 package models
 
 import (
+	"math/rand"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,11 +37,71 @@ const (
 	MoodTired    PetMood = "疲惫"
 )
 
+// 宠物种族类型
+type PetRace string
+
+const (
+	// 血牛类 (生命加成)
+	RaceElephant PetRace = "大象"
+	RaceBear     PetRace = "熊"
+	RaceMoose    PetRace = "驼鹿"
+
+	// 攻击类 (攻击力加成)
+	RaceTiger   PetRace = "老虎"
+	RaceLion    PetRace = "狮子"
+	RaceHyena   PetRace = "鬣狗"
+	RaceWolf    PetRace = "狼"
+	RaceLeopard PetRace = "豹子"
+
+	// 防御类 (防御力加成)
+	RaceRhino      PetRace = "犀牛"
+	RaceTurtle     PetRace = "乌龟"
+	RacePangolin   PetRace = "穿山甲"
+)
+
+// 技能类型
+type SkillType string
+
+const (
+	SkillTypeAttack   SkillType = "攻击"
+	SkillTypeDefense  SkillType = "防御"
+	SkillTypeVampire  SkillType = "吸血"
+)
+
+// 技能等级
+type SkillLevel int
+
+const (
+	SkillLevel1 SkillLevel = 1
+	SkillLevel2 SkillLevel = 2
+	SkillLevel3 SkillLevel = 3
+)
+
+// 技能定义
+type PetSkill struct {
+	Type   SkillType  `json:"type"`
+	Level  SkillLevel `json:"level"`
+	Name   string     `json:"name"`
+	Rarity string     `json:"rarity"`
+}
+
+// 种族定义
+type RaceInfo struct {
+	Name        PetRace `json:"name"`
+	Category    string  `json:"category"`
+	Rarity      string  `json:"rarity"`
+	HealthBonus int     `json:"health_bonus"`
+	AttackBonus int     `json:"attack_bonus"`
+	DefenseBonus int    `json:"defense_bonus"`
+}
+
 type Pet struct {
 	ID           string         `json:"id"`
 	Name         string         `json:"name"`
 	Owner        string         `json:"owner"`
 	Personality  PetPersonality `json:"personality"`
+	Race         RaceInfo       `json:"race"`          // 种族信息
+	Skill        PetSkill       `json:"skill"`         // 技能信息
 	Level        int            `json:"level"`
 	Experience   int            `json:"experience"`
 	Health       int            `json:"health"`
@@ -75,20 +136,146 @@ type Inventory struct {
 	Items []Item `json:"items"`
 }
 
+// 种族配置数据
+var RaceConfigs = map[PetRace]RaceInfo{
+	// 血牛类 (生命加成)
+	RaceElephant: {Name: RaceElephant, Category: "血牛", Rarity: "紫色", HealthBonus: 60, AttackBonus: 0, DefenseBonus: 0},
+	RaceBear:     {Name: RaceBear, Category: "血牛", Rarity: "蓝色", HealthBonus: 40, AttackBonus: 0, DefenseBonus: 0},
+	RaceMoose:    {Name: RaceMoose, Category: "血牛", Rarity: "绿色", HealthBonus: 20, AttackBonus: 0, DefenseBonus: 0},
+
+	// 攻击类 (攻击力加成)
+	RaceTiger:   {Name: RaceTiger, Category: "攻击", Rarity: "紫色", HealthBonus: 0, AttackBonus: 12, DefenseBonus: 0},
+	RaceLion:    {Name: RaceLion, Category: "攻击", Rarity: "蓝色", HealthBonus: 0, AttackBonus: 8, DefenseBonus: 0},
+	RaceHyena:   {Name: RaceHyena, Category: "攻击", Rarity: "蓝色", HealthBonus: 0, AttackBonus: 6, DefenseBonus: 0},
+	RaceWolf:    {Name: RaceWolf, Category: "攻击", Rarity: "绿色", HealthBonus: 0, AttackBonus: 5, DefenseBonus: 0},
+	RaceLeopard: {Name: RaceLeopard, Category: "攻击", Rarity: "绿色", HealthBonus: 0, AttackBonus: 3, DefenseBonus: 0},
+
+	// 防御类 (防御力加成)
+	RaceRhino:    {Name: RaceRhino, Category: "防御", Rarity: "紫色", HealthBonus: 0, AttackBonus: 0, DefenseBonus: 8},
+	RaceTurtle:   {Name: RaceTurtle, Category: "防御", Rarity: "蓝色", HealthBonus: 0, AttackBonus: 0, DefenseBonus: 6},
+	RacePangolin: {Name: RacePangolin, Category: "防御", Rarity: "绿色", HealthBonus: 0, AttackBonus: 0, DefenseBonus: 4},
+}
+
+// 技能配置数据
+var SkillConfigs = map[SkillType]map[SkillLevel]PetSkill{
+	SkillTypeAttack: {
+		SkillLevel1: {Type: SkillTypeAttack, Level: SkillLevel1, Name: "爪击", Rarity: "绿色"},
+		SkillLevel2: {Type: SkillTypeAttack, Level: SkillLevel2, Name: "撕咬", Rarity: "蓝色"},
+		SkillLevel3: {Type: SkillTypeAttack, Level: SkillLevel3, Name: "突袭", Rarity: "紫色"},
+	},
+	SkillTypeDefense: {
+		SkillLevel1: {Type: SkillTypeDefense, Level: SkillLevel1, Name: "反弹", Rarity: "绿色"},
+		SkillLevel2: {Type: SkillTypeDefense, Level: SkillLevel2, Name: "铁刺", Rarity: "蓝色"},
+		SkillLevel3: {Type: SkillTypeDefense, Level: SkillLevel3, Name: "钢针", Rarity: "紫色"},
+	},
+	SkillTypeVampire: {
+		SkillLevel1: {Type: SkillTypeVampire, Level: SkillLevel1, Name: "蝙蝠之咬", Rarity: "绿色"},
+		SkillLevel2: {Type: SkillTypeVampire, Level: SkillLevel2, Name: "狼人之咬", Rarity: "蓝色"},
+		SkillLevel3: {Type: SkillTypeVampire, Level: SkillLevel3, Name: "吸血鬼之咬", Rarity: "紫色"},
+	},
+}
+
+// 种族出现概率配置 (可动态调节)
+var RaceWeights = map[PetRace]int{
+	// 血牛类
+	RaceElephant: 5,  // 紫色 5%
+	RaceBear:     15, // 蓝色 15%
+	RaceMoose:    30, // 绿色 30%
+
+	// 攻击类
+	RaceTiger:   5,  // 紫色 5%
+	RaceLion:    10, // 蓝色 10%
+	RaceHyena:   10, // 蓝色 10%
+	RaceWolf:    15, // 绿色 15%
+	RaceLeopard: 15, // 绿色 15%
+
+	// 防御类
+	RaceRhino:    5,  // 紫色 5%
+	RaceTurtle:   10, // 蓝色 10%
+	RacePangolin: 15, // 绿色 15%
+}
+
+// 技能出现概率配置 (可动态调节)
+var SkillWeights = map[SkillType]map[SkillLevel]int{
+	SkillTypeAttack: {
+		SkillLevel1: 50, // 绿色 50%
+		SkillLevel2: 30, // 蓝色 30%
+		SkillLevel3: 10, // 紫色 10%
+	},
+	SkillTypeDefense: {
+		SkillLevel1: 50, // 绿色 50%
+		SkillLevel2: 30, // 蓝色 30%
+		SkillLevel3: 10, // 紫色 10%
+	},
+	SkillTypeVampire: {
+		SkillLevel1: 50, // 绿色 50%
+		SkillLevel2: 30, // 蓝色 30%
+		SkillLevel3: 10, // 紫色 10%
+	},
+}
+
+// 随机生成种族
+func GenerateRandomRace() RaceInfo {
+	totalWeight := 0
+	for _, weight := range RaceWeights {
+		totalWeight += weight
+	}
+
+	randNum := rand.Intn(totalWeight)
+	currentWeight := 0
+
+	for race, weight := range RaceWeights {
+		currentWeight += weight
+		if randNum < currentWeight {
+			return RaceConfigs[race]
+		}
+	}
+
+	// 默认返回驼鹿
+	return RaceConfigs[RaceMoose]
+}
+
+// 随机生成技能
+func GenerateRandomSkill() PetSkill {
+	skillTypes := []SkillType{SkillTypeAttack, SkillTypeDefense, SkillTypeVampire}
+	skillType := skillTypes[rand.Intn(len(skillTypes))]
+
+	totalWeight := 0
+	for _, weight := range SkillWeights[skillType] {
+		totalWeight += weight
+	}
+
+	randNum := rand.Intn(totalWeight)
+	currentWeight := 0
+
+	for level, weight := range SkillWeights[skillType] {
+		currentWeight += weight
+		if randNum < currentWeight {
+			return SkillConfigs[skillType][level]
+		}
+	}
+
+	// 默认返回1级攻击技能
+	return SkillConfigs[SkillTypeAttack][SkillLevel1]
+}
+
+// NewPet 创建新宠物（不包含种族和技能，需要后续设置）
 func NewPet(ownerName string) *Pet {
 	personalities := []PetPersonality{
 		PersonalityBrave, PersonalityGreedy, PersonalityFriendly,
 		PersonalityCautious, PersonalityCurious,
 	}
-	
+
 	petNames := []string{
 		"Lucky", "Brave", "Shadow", "Spark", "Whisper",
 		"Thunder", "Frost", "Blaze", "Swift", "Mystic",
 	}
 
+	baseName := petNames[len(ownerName)%len(petNames)]
+
 	pet := &Pet{
 		ID:           uuid.New().String(),
-		Name:         petNames[len(ownerName)%len(petNames)],
+		Name:         baseName,
 		Owner:        ownerName,
 		Personality:  personalities[len(ownerName)%len(personalities)],
 		Level:        1,
@@ -129,6 +316,30 @@ func NewPet(ownerName string) *Pet {
 	}
 
 	return pet
+}
+
+// NewPetWithRaceAndSkill 创建带有种族和技能的新宠物
+func NewPetWithRaceAndSkill(ownerName string, race RaceInfo, skill PetSkill) *Pet {
+	pet := NewPet(ownerName)
+
+	// 设置种族
+	pet.Race = race
+
+	// 设置技能
+	pet.Skill = skill
+
+	// 应用种族属性加成
+	pet.ApplyRaceBonuses()
+
+	return pet
+}
+
+// ApplyRaceBonuses 应用种族属性加成
+func (p *Pet) ApplyRaceBonuses() {
+	p.Health += p.Race.HealthBonus
+	p.MaxHealth += p.Race.HealthBonus
+	p.Attack += p.Race.AttackBonus
+	p.Defense += p.Race.DefenseBonus
 }
 
 func (p *Pet) GainExperience(exp int) bool {

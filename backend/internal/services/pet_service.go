@@ -122,17 +122,95 @@ func (ps *PetService) CreatePet(ownerName string) (*models.Pet, error) {
 		PetID:     pet.ID,
 		PetName:   pet.Name,
 		Type:      models.EventExplore,
-		Message:   fmt.Sprintf("[%s] 诞生了！准备开始探索世界...", pet.Name),
+		Message:   fmt.Sprintf("[%s] 诞生了！点击骰子选择种族和技能后开始探索世界...", pet.Name),
 		Timestamp: time.Now(),
 		Data:      models.EventData{Location: pet.Location},
 	}
 
 	ps.addEvent(event)
-	
-	// 启动该宠物的AI循环
-	ps.startPetAI(pet)
-	
+
 	return pet, nil
+}
+
+// RollRace 掷骰子选择种族
+func (ps *PetService) RollRace(petID string) (*models.RaceInfo, error) {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return nil, fmt.Errorf("pet not found")
+	}
+
+	// 检查是否已经有种族
+	if pet.Race.Name != "" {
+		return nil, fmt.Errorf("pet already has a race")
+	}
+
+	race := models.GenerateRandomRace()
+	pet.Race = race
+	pet.ApplyRaceBonuses()
+
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventReward,
+		Message:   fmt.Sprintf("🎲 [%s] 掷出了种族：%s (%s) - %s品质！", pet.Name, race.Name, race.Category, race.Rarity),
+		Timestamp: time.Now(),
+		Data:      models.EventData{},
+	}
+	ps.addEvent(event)
+
+	return &race, nil
+}
+
+// RollSkill 掷骰子选择技能
+func (ps *PetService) RollSkill(petID string) (*models.PetSkill, error) {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return nil, fmt.Errorf("pet not found")
+	}
+
+	// 检查是否已经有技能
+	if pet.Skill.Name != "" {
+		return nil, fmt.Errorf("pet already has a skill")
+	}
+
+	skill := models.GenerateRandomSkill()
+	pet.Skill = skill
+
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventReward,
+		Message:   fmt.Sprintf("🎲 [%s] 掷出了技能：%s (%s) - %s品质！", pet.Name, skill.Name, skill.Type, skill.Rarity),
+		Timestamp: time.Now(),
+		Data:      models.EventData{},
+	}
+	ps.addEvent(event)
+
+	// 如果种族和技能都选择完毕，启动AI
+	if pet.Race.Name != "" && pet.Skill.Name != "" {
+		ps.startPetAI(pet)
+
+		finalEvent := models.Event{
+			ID:        uuid.New().String(),
+			PetID:     pet.ID,
+			PetName:   pet.Name,
+			Type:      models.EventExplore,
+			Message:   fmt.Sprintf("✨ [%s] 完成初始化，开始探索世界！", pet.Name),
+			Timestamp: time.Now(),
+			Data:      models.EventData{Location: pet.Location},
+		}
+		ps.addEvent(finalEvent)
+	}
+
+	return &skill, nil
 }
 
 func (ps *PetService) GetPet(petID string) (*models.Pet, bool) {
@@ -339,7 +417,7 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 func (ps *PetService) simulateBattle(pet *models.Pet, monster models.Monster) bool {
 	petPower := pet.Attack + pet.Defense + pet.Level*2
 	monsterPower := monster.Attack + monster.Defense
-	
+
 	personalityBonus := 0
 	switch pet.Personality {
 	case models.PersonalityBrave:
@@ -349,8 +427,32 @@ func (ps *PetService) simulateBattle(pet *models.Pet, monster models.Monster) bo
 	case models.PersonalityCautious:
 		personalityBonus = 3
 	}
-	
-	return (petPower + personalityBonus + rand.Intn(20)) > (monsterPower + rand.Intn(15))
+
+	// 技能效果
+	skillBonus := 0
+	if pet.Skill.Name != "" {
+		switch pet.Skill.Type {
+		case models.SkillTypeAttack:
+			// 攻击技能增加战斗力
+			skillBonus = int(pet.Skill.Level) * 3
+		case models.SkillTypeDefense:
+			// 防御技能增加防御力
+			skillBonus = int(pet.Skill.Level) * 2
+		case models.SkillTypeVampire:
+			// 吸血技能在胜利时回复生命值
+			skillBonus = int(pet.Skill.Level) * 2
+		}
+	}
+
+	victory := (petPower + personalityBonus + skillBonus + rand.Intn(20)) > (monsterPower + rand.Intn(15))
+
+	// 技能特殊效果
+	if victory && pet.Skill.Type == models.SkillTypeVampire {
+		healAmount := int(pet.Skill.Level) * 5
+		pet.Heal(healAmount)
+	}
+
+	return victory
 }
 
 func (ps *PetService) addEvent(event models.Event) {
@@ -874,6 +976,20 @@ func (ps *PetService) GetPetStatus(petID string) (map[string]interface{}, error)
 			"mood":         pet.Mood,
 			"created_at":   pet.CreatedAt,
 			"last_activity": pet.LastActivity,
+		},
+		"race_info": map[string]interface{}{
+			"name":          pet.Race.Name,
+			"category":      pet.Race.Category,
+			"rarity":        pet.Race.Rarity,
+			"health_bonus":  pet.Race.HealthBonus,
+			"attack_bonus":  pet.Race.AttackBonus,
+			"defense_bonus": pet.Race.DefenseBonus,
+		},
+		"skill_info": map[string]interface{}{
+			"type":   pet.Skill.Type,
+			"level":  pet.Skill.Level,
+			"name":   pet.Skill.Name,
+			"rarity": pet.Skill.Rarity,
 		},
 		"attributes": map[string]interface{}{
 			"health":      pet.Health,

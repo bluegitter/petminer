@@ -1,7 +1,10 @@
-import React from 'react';
-import { Heart, Zap, Shield, Coins, MapPin, Activity } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Zap, Shield, Coins, MapPin, Activity, Dice6 } from 'lucide-react';
+import { petAPI } from '../services/api';
 
-const PetCard = ({ pet, onStartExploration }) => {
+const PetCard = ({ pet, onStartExploration, onPetUpdate }) => {
+  const [isRolling, setIsRolling] = useState(false);
+
   if (!pet) {
     return (
       <div className="bg-black border border-terminal-text rounded-lg p-6">
@@ -11,6 +14,40 @@ const PetCard = ({ pet, onStartExploration }) => {
       </div>
     );
   }
+
+  // 掷骰子选择种族
+  const handleRollRace = async () => {
+    if (isRolling) return;
+    setIsRolling(true);
+    try {
+      await petAPI.rollRace(pet.id);
+      if (onPetUpdate) {
+        onPetUpdate();
+      }
+    } catch (error) {
+      console.error('选择种族失败:', error);
+      alert('选择种族失败，请重试');
+    } finally {
+      setIsRolling(false);
+    }
+  };
+
+  // 掷骰子选择技能
+  const handleRollSkill = async () => {
+    if (isRolling) return;
+    setIsRolling(true);
+    try {
+      await petAPI.rollSkill(pet.id);
+      if (onPetUpdate) {
+        onPetUpdate();
+      }
+    } catch (error) {
+      console.error('选择技能失败:', error);
+      alert('选择技能失败，请重试');
+    } finally {
+      setIsRolling(false);
+    }
+  };
 
   const getPersonalityIcon = (personality) => {
     switch (personality) {
@@ -40,6 +77,44 @@ const PetCard = ({ pet, onStartExploration }) => {
       case '战斗中': return 'text-red-400';
       case '等待中': return 'text-green-400';
       default: return 'text-gray-400';
+    }
+  };
+
+  // 获取稀有度颜色
+  const getRarityColor = (rarity) => {
+    switch (rarity) {
+      case '绿色': return 'text-green-400 border-green-400';
+      case '蓝色': return 'text-blue-400 border-blue-400';
+      case '紫色': return 'text-purple-400 border-purple-400';
+      default: return 'text-gray-400 border-gray-400';
+    }
+  };
+
+  // 获取种族图标
+  const getRaceIcon = (raceName) => {
+    switch (raceName) {
+      case '大象': return '🐘';
+      case '熊': return '🐻';
+      case '驼鹿': return '🦌';
+      case '老虎': return '🐅';
+      case '狮子': return '🦁';
+      case '鬣狗': return '🐺';
+      case '狼': return '🐺';
+      case '豹子': return '🐆';
+      case '犀牛': return '🦏';
+      case '乌龟': return '🐢';
+      case '穿山甲': return '🦔';
+      default: return '🐾';
+    }
+  };
+
+  // 获取技能图标
+  const getSkillIcon = (skillType) => {
+    switch (skillType) {
+      case '攻击': return '⚔️';
+      case '防御': return '🛡️';
+      case '吸血': return '🩸';
+      default: return '✨';
     }
   };
 
@@ -170,6 +245,63 @@ const PetCard = ({ pet, onStartExploration }) => {
         </div>
       </div>
 
+      {/* 种族和技能信息 */}
+      <div className="mb-2 md:mb-3 grid grid-cols-2 gap-2">
+        {/* 种族信息 */}
+        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700">
+          {pet.race && pet.race.name ? (
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-lg">{getRaceIcon(pet.race.name)}</span>
+                <span className="text-xs text-gray-400">种族</span>
+              </div>
+              <div className={`text-sm font-bold ${getRarityColor(pet.race.rarity).split(' ')[0]}`}>
+                {pet.race.name}
+              </div>
+              <div className="text-xs text-gray-500">{pet.race.category}</div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-16">
+              <button
+                onClick={handleRollRace}
+                disabled={isRolling}
+                className="flex items-center gap-1 px-3 py-1 bg-yellow-600 hover:bg-yellow-500 rounded-lg text-black font-bold text-xs transition-colors disabled:opacity-50"
+              >
+                <Dice6 className={`w-3 h-3 ${isRolling ? 'animate-spin' : ''}`} />
+                选择种族
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 技能信息 */}
+        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700">
+          {pet.skill && pet.skill.name ? (
+            <div>
+              <div className="flex items-center gap-1 mb-1">
+                <span className="text-sm">{getSkillIcon(pet.skill.type)}</span>
+                <span className="text-xs text-gray-400">技能</span>
+              </div>
+              <div className={`text-sm font-bold ${getRarityColor(pet.skill.rarity).split(' ')[0]}`}>
+                {pet.skill.name}
+              </div>
+              <div className="text-xs text-gray-500">Lv.{pet.skill.level}</div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-16">
+              <button
+                onClick={handleRollSkill}
+                disabled={isRolling}
+                className="flex items-center gap-1 px-3 py-1 bg-purple-600 hover:bg-purple-500 rounded-lg text-white font-bold text-xs transition-colors disabled:opacity-50"
+              >
+                <Dice6 className={`w-3 h-3 ${isRolling ? 'animate-spin' : ''}`} />
+                选择技能
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* 属性一行显示 - 攻击力、防御力、金币 */}
       <div className="grid grid-cols-3 gap-2 md:gap-3 mb-2 md:mb-3">
         <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-blue-400 transition-colors">
@@ -210,20 +342,26 @@ const PetCard = ({ pet, onStartExploration }) => {
       </div>
 
       {/* 行动按钮 - 紧凑高度 */}
-      {pet.status === '等待中' && (
+      {pet.status === '等待中' && pet.race && pet.race.name && pet.skill && pet.skill.name && (
         <button
           onClick={() => onStartExploration(pet.id)}
-          className="w-full bg-gradient-to-r from-terminal-text to-terminal-accent text-black 
-                     py-2 md:py-3 px-3 md:px-4 rounded-lg font-bold 
-                     hover:from-terminal-accent hover:to-terminal-text 
-                     transition-all duration-300 transform hover:scale-105 hover:shadow-lg 
+          className="w-full bg-gradient-to-r from-terminal-text to-terminal-accent text-black
+                     py-2 md:py-3 px-3 md:px-4 rounded-lg font-bold
+                     hover:from-terminal-accent hover:to-terminal-text
+                     transition-all duration-300 transform hover:scale-105 hover:shadow-lg
                      relative overflow-hidden group text-sm md:text-base"
         >
           <span className="relative z-10">🚀 开始探索</span>
           <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
         </button>
       )}
-      
+
+      {pet.status === '等待中' && (!pet.race || !pet.race.name || !pet.skill || !pet.skill.name) && (
+        <div className="w-full py-2 md:py-3 px-3 md:px-4 rounded-lg bg-gray-800 text-center border-2 border-dashed border-gray-600">
+          <span className="text-gray-400 text-sm md:text-base">🎲 请先选择种族和技能</span>
+        </div>
+      )}
+
       {pet.status !== '等待中' && (
         <div className="w-full py-2 md:py-3 px-3 md:px-4 rounded-lg bg-gray-800 text-center border-2 border-dashed border-gray-600">
           <span className="text-gray-400 text-sm md:text-base">🎮 {pet.name} 正在 {pet.status}...</span>

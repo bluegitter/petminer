@@ -153,7 +153,7 @@ func (h *PetHandler) SocializePet(c *gin.Context) {
 // GetPetStatus 获取宠物详细状态
 func (h *PetHandler) GetPetStatus(c *gin.Context) {
 	petID := c.Param("id")
-	
+
 	status, err := h.petService.GetPetStatus(petID)
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
@@ -161,4 +161,30 @@ func (h *PetHandler) GetPetStatus(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, status)
+}
+
+// RollRace 掷骰子选择种族
+func (h *PetHandler) RollRace(c *gin.Context) {
+	petID := c.Param("id")
+
+	race, err := h.petService.RollRace(petID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"race": race, "message": "种族选择成功！"})
+}
+
+// RollSkill 掷骰子选择技能
+func (h *PetHandler) RollSkill(c *gin.Context) {
+	petID := c.Param("id")
+
+	skill, err := h.petService.RollSkill(petID)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"skill": skill, "message": "技能选择成功！"})
 }
