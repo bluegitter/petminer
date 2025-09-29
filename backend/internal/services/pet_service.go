@@ -11,22 +11,24 @@ import (
 )
 
 type PetService struct {
-	pets     map[string]*models.Pet
-	events   []models.Event
-	mutex    sync.RWMutex
-	eventsCh chan models.Event
-	aiEngine *AIEngine
+	pets       map[string]*models.Pet
+	events     []models.Event
+	mutex      sync.RWMutex
+	eventsCh   chan models.Event
+	aiEngine   *AIEngine
 	activePets map[string]*time.Ticker // 活跃的宠物和它们的ticker
+	recentEvents map[string]time.Time  // 最近事件缓存，用于去重
 }
 
 func NewPetService() *PetService {
 	ps := &PetService{
-		pets:       make(map[string]*models.Pet),
-		events:     make([]models.Event, 0),
-		mutex:      sync.RWMutex{},
-		eventsCh:   make(chan models.Event, 100),
-		aiEngine:   NewAIEngine(),
-		activePets: make(map[string]*time.Ticker),
+		pets:         make(map[string]*models.Pet),
+		events:       make([]models.Event, 0),
+		mutex:        sync.RWMutex{},
+		eventsCh:     make(chan models.Event, 100),
+		aiEngine:     NewAIEngine(),
+		activePets:   make(map[string]*time.Ticker),
+		recentEvents: make(map[string]time.Time),
 	}
 	
 	// 启动全局AI循环
@@ -119,30 +121,32 @@ func (ps *PetService) StartExploration(petID string) error {
 		return fmt.Errorf("pet is not alive")
 	}
 
-	pet.Status = "探索中"
+	// 如果已经在探索中，不重复启动
+	if pet.Status == "探索中" {
+		return fmt.Errorf("pet is already exploring")
+	}
+
+	// 不再启动探索循环，让AI来控制探索行为
+	// 这里只是把状态设为空闲，让AI决策系统接管
+	pet.Status = models.StatusIdle
 	pet.LastActivity = time.Now()
 	
-	go ps.exploreLoop(pet)
+	// 发送一个提示消息
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventExplore,
+		Message:   fmt.Sprintf("[%s] 收到探索指令，正在评估周围环境...", pet.Name),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Location: pet.Location},
+	}
+	ps.addEvent(event)
+	
 	return nil
 }
 
-func (ps *PetService) exploreLoop(pet *models.Pet) {
-	ticker := time.NewTicker(10 * time.Second)
-	defer ticker.Stop()
-
-	for range ticker.C {
-		ps.mutex.Lock()
-		if pet.Status != "探索中" || !pet.IsAlive() {
-			ps.mutex.Unlock()
-			break
-		}
-		
-		event := ps.generateRandomEvent(pet)
-		ps.addEvent(event)
-		pet.LastActivity = time.Now()
-		ps.mutex.Unlock()
-	}
-}
+// exploreLoop 函数已移除，现在完全由AI决策系统控制探索行为
 
 func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 	eventTypes := []models.EventType{
@@ -192,9 +196,19 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 	case models.EventDiscovery:
 		coins := rand.Intn(20) + 5
 		pet.Coins += coins
-		discoveries := []string{"宝箱", "神秘水晶", "古老卷轴", "闪光宝石", "魔法药水"}
+		discoveries := []string{"宝箱", "神秘水晶", "古老卷轴", "闪光宝石", "魔法药水", "远古符文", "珍稀矿石", "神秘遗物"}
 		discovery := discoveries[rand.Intn(len(discoveries))]
-		event.Message = fmt.Sprintf("[%s] 发现了%s，获得%d金币！", pet.Name, discovery, coins)
+		
+		// 增加发现事件的消息变化性
+		discoveryMessages := []string{
+			"发现了%s，获得%d金币！",
+			"在探索中找到%s，收获%d金币！", 
+			"意外挖掘出%s，得到%d金币奖励！",
+			"仔细搜索后发现%s，获得%d金币！",
+			"幸运地遇到%s，赚得%d金币！",
+		}
+		messageTemplate := discoveryMessages[rand.Intn(len(discoveryMessages))]
+		event.Message = fmt.Sprintf("[%s] %s", pet.Name, fmt.Sprintf(messageTemplate, discovery, coins))
 		event.Data.Coins = coins
 
 	case models.EventSocial:
@@ -213,7 +227,18 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 		} else {
 			coins := rand.Intn(50) + 10
 			pet.Coins += coins
-			event.Message = fmt.Sprintf("[%s] 找到了一些零散的金币：+%d", pet.Name, coins)
+			
+			// 增加消息变化性，避免重复
+			rewardMessages := []string{
+				"找到了一些零散的金币：+%d",
+				"发现了闪闪发光的硬币：+%d",
+				"从地上捡到了金币：+%d", 
+				"在岩石缝隙中发现金币：+%d",
+				"挖出了埋在土里的金币：+%d",
+				"在古老树根下找到金币：+%d",
+			}
+			messageTemplate := rewardMessages[rand.Intn(len(rewardMessages))]
+			event.Message = fmt.Sprintf("[%s] %s", pet.Name, fmt.Sprintf(messageTemplate, coins))
 			event.Data.Coins = coins
 		}
 	}
@@ -239,6 +264,31 @@ func (ps *PetService) simulateBattle(pet *models.Pet, monster models.Monster) bo
 }
 
 func (ps *PetService) addEvent(event models.Event) {
+	// 生成更精确的事件指纹，包含金币数量信息
+	eventKey := fmt.Sprintf("%s:%s:%s", event.PetID, event.Type, event.Message)
+	
+	// 对于包含金币的事件，增加金币数量到指纹中
+	if event.Data.Coins != 0 {
+		eventKey = fmt.Sprintf("%s:coins:%d", eventKey, event.Data.Coins)
+	}
+	
+	// 检查是否是重复事件（15秒内相同内容的事件视为重复）
+	if lastTime, exists := ps.recentEvents[eventKey]; exists {
+		if time.Since(lastTime) < 15*time.Second {
+			return // 跳过重复事件
+		}
+	}
+	
+	// 记录事件时间
+	ps.recentEvents[eventKey] = event.Timestamp
+	
+	// 清理过期的事件记录（超过60秒的记录）
+	for key, timestamp := range ps.recentEvents {
+		if time.Since(timestamp) > 60*time.Second {
+			delete(ps.recentEvents, key)
+		}
+	}
+	
 	ps.events = append(ps.events, event)
 	if len(ps.events) > 1000 {
 		ps.events = ps.events[100:]
@@ -286,8 +336,8 @@ func (ps *PetService) startPetAI(pet *models.Pet) {
 				return
 			}
 
-			// 如果宠物在忙碌状态，跳过此次决策
-			if currentPet.Status != models.StatusIdle {
+			// 如果宠物在忙碌状态（包括探索中），跳过此次决策
+			if currentPet.Status != models.StatusIdle && currentPet.Status != "等待中" {
 				ps.mutex.Unlock()
 				continue
 			}
