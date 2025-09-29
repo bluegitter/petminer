@@ -174,12 +174,13 @@ const PetCard = ({ pet, onStartExploration }) => {
         </div>
       </div>
 
-      {/* 属性网格 - 移动端更紧凑 */}
-      <div className="grid grid-cols-3 md:grid-cols-2 gap-2 md:gap-3 mb-3 md:mb-4">
+      {/* 属性一行显示 - 攻击力、防御力、金币 */}
+      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
         <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-blue-400 transition-colors">
           <div className="flex items-center gap-1 md:gap-2 mb-1">
             <Zap className="w-3 md:w-4 h-3 md:h-4 text-blue-400" />
             <span className="text-xs text-gray-400 hidden md:inline">攻击力</span>
+            <span className="text-xs text-gray-400 md:hidden">攻击</span>
           </div>
           <div className="text-sm md:text-lg font-bold text-blue-400">{pet.attack}</div>
         </div>
@@ -188,16 +189,18 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="flex items-center gap-1 md:gap-2 mb-1">
             <Shield className="w-3 md:w-4 h-3 md:h-4 text-green-400" />
             <span className="text-xs text-gray-400 hidden md:inline">防御力</span>
+            <span className="text-xs text-gray-400 md:hidden">防御</span>
           </div>
           <div className="text-sm md:text-lg font-bold text-green-400">{pet.defense}</div>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-yellow-400 transition-colors col-span-3 md:col-span-2">
+        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-yellow-400 transition-colors">
           <div className="flex items-center gap-1 md:gap-2 mb-1">
             <Coins className="w-3 md:w-4 h-3 md:h-4 text-yellow-400" />
             <span className="text-xs text-gray-400 hidden md:inline">金币</span>
+            <span className="text-xs text-gray-400 md:hidden">金币</span>
           </div>
-          <div className="text-base md:text-xl font-bold text-yellow-400 font-mono">{pet.coins.toLocaleString()}</div>
+          <div className="text-sm md:text-lg font-bold text-yellow-400 font-mono">{pet.coins.toLocaleString()}</div>
         </div>
       </div>
 

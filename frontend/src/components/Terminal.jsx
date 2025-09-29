@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 
-const Terminal = ({ events, title = "事件日志" }) => {
+const Terminal = ({ events, title = "宠物冒险日记" }) => {
   const terminalRef = useRef(null);
 
   useEffect(() => {
@@ -38,23 +38,22 @@ const Terminal = ({ events, title = "事件日志" }) => {
   };
 
   return (
-    <div className="bg-transparent overflow-hidden h-full flex flex-col">
-      <div className="bg-terminal-text text-black px-3 md:px-4 py-2 font-bold text-sm md:text-base flex-shrink-0">
+    <div className="w-full bg-transparent" style={{ height: '100%' }}>
+      <div className="px-3 py-2 text-sm font-bold text-black bg-terminal-text md:px-4 md:text-base">
         <span className="hidden md:inline">{title}</span>
-        <span className="md:hidden">事件日志</span>
+        <span className="md:hidden">冒险日记</span>
       </div>
       <div 
         ref={terminalRef}
-        className="overflow-y-auto p-3 md:p-4 terminal-scroll bg-transparent text-terminal-text font-mono text-xs md:text-sm"
-        style={{ height: '520px' }}
+        className="p-3 overflow-y-auto font-mono text-xs bg-transparent md:p-4 terminal-scroll text-terminal-text md:text-sm responsive-terminal-content"
       >
         {events.length === 0 ? (
-          <div className="text-gray-500 text-sm">等待事件...</div>
+          <div className="text-sm text-gray-500">等待事件...</div>
         ) : (
           events.map((event, index) => (
             <div key={`${event.id}-${index}`} className="mb-1 md:mb-2">
-              <div className="flex flex-col md:flex-row md:items-start gap-1 md:gap-2">
-                <span className="text-gray-400 text-xs md:text-sm flex-shrink-0">
+              <div className="flex flex-col gap-1 md:flex-row md:items-start md:gap-2">
+                <span className="flex-shrink-0 text-xs text-gray-400 md:text-sm">
                   [{formatTimestamp(event.timestamp)}]
                 </span>
                 <span className={`text-xs md:text-sm ${getEventColor(event.type)} break-words`}>
@@ -64,7 +63,7 @@ const Terminal = ({ events, title = "事件日志" }) => {
             </div>
           ))
         )}
-        <div className="typing-cursor opacity-50"></div>
+        <div className="opacity-50 typing-cursor"></div>
       </div>
     </div>
   );

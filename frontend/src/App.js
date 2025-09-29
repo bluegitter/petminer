@@ -227,11 +227,11 @@ function App() {
 
           {/* 右侧终端区域 - 事件日志和CLI */}
           <div className="lg:col-span-7 xl:col-span-8 animate-slide-in-right">
-            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 md:gap-6" style={{ height: '600px' }}>
+            <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 md:gap-6 responsive-terminal-grid">
               {/* 事件日志 */}
-              <div className="relative h-full particle-bg">
+              <div className="relative particle-bg responsive-terminal-panel">
                 <div className="absolute rounded-lg -inset-1 bg-gradient-to-r from-green-400 to-terminal-accent blur opacity-20 animate-glow"></div>
-                <div className="relative h-full terminal-enhanced">
+                <div className="relative terminal-enhanced" style={{ height: '100%' }}>
                   <Terminal events={events} title="宠物冒险日记" />
                 </div>
                 {/* 数据流效果 */}
@@ -241,9 +241,9 @@ function App() {
               </div>
               
               {/* CLI终端 */}
-              <div className="relative h-full">
+              <div className="relative responsive-cli-panel md:responsive-terminal-panel">
                 <div className="absolute rounded-lg -inset-1 bg-gradient-to-r from-blue-400 to-purple-500 blur opacity-20 animate-glow"></div>
-                <div className="relative h-full cli-enhanced">
+                <div className="relative cli-enhanced" style={{ height: '100%' }}>
                   <CLITerminal 
                     selectedPet={selectedPet} 
                     onCommand={handleCLICommand}

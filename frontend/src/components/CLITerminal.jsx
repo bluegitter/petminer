@@ -331,8 +331,7 @@ const CLITerminal = ({ selectedPet, onCommand }) => {
       {/* 终端内容 */}
       <div 
         ref={terminalRef}
-        className="overflow-y-auto p-3 font-mono text-xs bg-transparent md:p-4 terminal-scroll text-terminal-text md:text-sm"
-        style={{ height: '480px' }}
+        className="overflow-y-auto p-3 font-mono text-xs bg-transparent md:p-4 terminal-scroll text-terminal-text md:text-sm responsive-cli-content md:responsive-terminal-content"
       >
         {history.map((entry, index) => (
           <div key={index} className={`mb-1 ${getMessageStyle(entry.type)}`}>
