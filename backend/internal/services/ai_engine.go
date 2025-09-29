@@ -210,6 +210,11 @@ func (ai *AIEngine) calculateSocializePriority(pet *models.Pet) int {
 
 // 计算进食行为优先级
 func (ai *AIEngine) calculateEatPriority(pet *models.Pet) int {
+	// 如果饱食度已达到90以上，不需要进食
+	if pet.Hunger >= 90 {
+		return 0
+	}
+	
 	priority := 0
 	
 	// 基于饱食度调整
@@ -219,11 +224,13 @@ func (ai *AIEngine) calculateEatPriority(pet *models.Pet) int {
 		priority = 70
 	} else if pet.Hunger < 60 {
 		priority = 30
+	} else if pet.Hunger < 80 {
+		priority = 10 // 轻微饥饿
 	}
 	
-	// 基于性格调整
-	if pet.Personality == models.PersonalityGreedy {
-		priority += 20
+	// 基于性格调整（但不能导致已饱食时还要进食）
+	if pet.Personality == models.PersonalityGreedy && pet.Hunger < 85 {
+		priority += 15
 	}
 	
 	return priority
