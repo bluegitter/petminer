@@ -7,16 +7,22 @@ const CreatePetForm = ({ onCreatePet }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
 
+  const [error, setError] = useState('');
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!ownerName.trim()) return;
 
     setIsLoading(true);
+    setError('');
     try {
       await onCreatePet(ownerName.trim());
       setOwnerName('');
     } catch (error) {
       console.error('创建宠物失败:', error);
+      // 显示服务器返回的错误信息
+      const errorMessage = error.response?.data?.error || '创建宠物失败，请稍后再试';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +96,19 @@ const CreatePetForm = ({ onCreatePet }) => {
             </span>
             <div className="absolute inset-0 bg-white opacity-0 group-hover:opacity-20 transition-opacity"></div>
           </button>
+
+          {/* 错误提示 */}
+          {error && (
+            <div className="mt-3 p-3 bg-red-900 bg-opacity-50 border border-red-500 border-opacity-50 rounded-lg">
+              <div className="flex items-start gap-2">
+                <span className="text-red-400 text-sm">⚠️</span>
+                <div className="text-red-300 text-xs md:text-sm">
+                  <div className="font-medium mb-1">创建失败</div>
+                  <p>{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </form>
         
         <div className="mt-4 md:mt-6 p-3 md:p-4 bg-blue-900 bg-opacity-30 rounded-lg border border-blue-500 border-opacity-30">

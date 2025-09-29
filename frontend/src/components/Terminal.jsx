@@ -38,14 +38,15 @@ const Terminal = ({ events, title = "事件日志" }) => {
   };
 
   return (
-    <div className="bg-black border border-terminal-text rounded-lg overflow-hidden">
-      <div className="bg-terminal-text text-black px-3 md:px-4 py-2 font-bold text-sm md:text-base">
+    <div className="bg-transparent overflow-hidden h-full flex flex-col">
+      <div className="bg-terminal-text text-black px-3 md:px-4 py-2 font-bold text-sm md:text-base flex-shrink-0">
         <span className="hidden md:inline">{title}</span>
         <span className="md:hidden">事件日志</span>
       </div>
       <div 
         ref={terminalRef}
-        className="h-64 md:h-80 lg:h-96 overflow-y-auto p-3 md:p-4 terminal-scroll"
+        className="overflow-y-auto p-3 md:p-4 terminal-scroll bg-transparent text-terminal-text font-mono text-xs md:text-sm"
+        style={{ height: '520px' }}
       >
         {events.length === 0 ? (
           <div className="text-gray-500 text-sm">等待事件...</div>

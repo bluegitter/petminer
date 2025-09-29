@@ -71,13 +71,21 @@ const PetCard = ({ pet, onStartExploration }) => {
           </div>
         </div>
         
-        {/* 状态和性格 - 手机端简化 */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 bg-gray-800 rounded-full">
+        {/* 状态、性格和心情 - 手机端简化 */}
+        <div className="flex items-center justify-between flex-wrap gap-1 md:gap-2">
+          <div className="flex items-center gap-1 px-2 py-1 bg-gray-800 rounded-full">
             <span className="text-xs text-gray-400 hidden md:inline">性格:</span>
             <span className="text-xs font-medium text-terminal-accent">{getPersonalityText(pet.personality)}</span>
           </div>
-          <div className={`flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1 rounded-full ${
+          
+          {pet.mood && (
+            <div className="flex items-center gap-1 px-2 py-1 bg-purple-900 bg-opacity-50 rounded-full">
+              <span className="text-xs">😊</span>
+              <span className="text-xs font-medium text-purple-400">{pet.mood}</span>
+            </div>
+          )}
+          
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full ${
             pet.status === '探索中' ? 'bg-yellow-900 bg-opacity-50' :
             pet.status === '战斗中' ? 'bg-red-900 bg-opacity-50' :
             'bg-green-900 bg-opacity-50'
@@ -90,21 +98,21 @@ const PetCard = ({ pet, onStartExploration }) => {
         </div>
       </div>
 
-      {/* 生命值和经验值条 - 紧凑显示 */}
-      <div className="mb-3 md:mb-4 space-y-2 md:space-y-3">
+      {/* 状态条显示 - 紧凑显示 */}
+      <div className="mb-3 md:mb-4 space-y-1 md:space-y-2">
         {/* 生命值条 */}
         <div>
-          <div className="flex justify-between text-xs md:text-sm mb-1">
-            <div className="flex items-center gap-1 md:gap-2">
-              <Heart className="w-3 md:w-4 h-3 md:h-4 text-red-400" />
+          <div className="flex justify-between text-xs mb-1">
+            <div className="flex items-center gap-1">
+              <Heart className="w-3 h-3 text-red-400" />
               <span className="hidden md:inline">生命值</span>
               <span className="md:hidden">HP</span>
             </div>
-            <span className="font-mono text-xs md:text-sm">{pet.health}/{pet.max_health}</span>
+            <span className="font-mono text-xs">{pet.health}/{pet.max_health}</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2 md:h-3 overflow-hidden">
+          <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-2 overflow-hidden">
             <div 
-              className={`h-2 md:h-3 rounded-full transition-all duration-500 ${
+              className={`h-1.5 md:h-2 rounded-full transition-all duration-500 ${
                 healthPercentage > 70 ? 'bg-gradient-to-r from-green-400 to-green-500' :
                 healthPercentage > 30 ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
                 'bg-gradient-to-r from-red-400 to-red-600'
@@ -114,16 +122,52 @@ const PetCard = ({ pet, onStartExploration }) => {
           </div>
         </div>
 
+        {/* 体力值条 */}
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <div className="flex items-center gap-1">
+              <Zap className="w-3 h-3 text-yellow-400" />
+              <span className="hidden md:inline">体力</span>
+              <span className="md:hidden">EN</span>
+            </div>
+            <span className="font-mono text-xs">{pet.energy || 100}/{pet.max_energy || 100}</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-2 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-yellow-400 to-orange-500 h-1.5 md:h-2 rounded-full transition-all duration-500"
+              style={{ width: `${((pet.energy || 100) / (pet.max_energy || 100)) * 100}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* 饱食度条 */}
+        <div>
+          <div className="flex justify-between text-xs mb-1">
+            <div className="flex items-center gap-1">
+              <span className="text-xs">🍖</span>
+              <span className="hidden md:inline">饱食</span>
+              <span className="md:hidden">食</span>
+            </div>
+            <span className="font-mono text-xs">{pet.hunger || 80}/100</span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-2 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-green-400 to-green-600 h-1.5 md:h-2 rounded-full transition-all duration-500"
+              style={{ width: `${(pet.hunger || 80)}%` }}
+            ></div>
+          </div>
+        </div>
+
         {/* 经验值条 */}
         <div>
-          <div className="flex justify-between text-xs md:text-sm mb-1">
+          <div className="flex justify-between text-xs mb-1">
             <span className="hidden md:inline">经验值</span>
             <span className="md:hidden">EXP</span>
-            <span className="font-mono text-xs md:text-sm">{pet.experience}/{pet.level * 100}</span>
+            <span className="font-mono text-xs">{pet.experience}/{pet.level * 100}</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-1 md:h-2 overflow-hidden">
+          <div className="w-full bg-gray-700 rounded-full h-1 md:h-1.5 overflow-hidden">
             <div 
-              className="bg-gradient-to-r from-blue-400 to-purple-500 h-1 md:h-2 rounded-full transition-all duration-500"
+              className="bg-gradient-to-r from-blue-400 to-purple-500 h-1 md:h-1.5 rounded-full transition-all duration-500"
               style={{ width: `${(pet.experience / (pet.level * 100)) * 100}%` }}
             ></div>
           </div>

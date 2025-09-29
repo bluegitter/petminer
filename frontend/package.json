@@ -44,5 +44,5 @@
     "@types/react": "^18.2.31",
     "@types/react-dom": "^18.2.14"
   },
-  "proxy": "http://localhost:8080"
+  "proxy": "http://localhost:8081"
 }
