@@ -4,6 +4,7 @@ import (
 	"log"
 	"os"
 
+	"miningpet/internal/database"
 	"miningpet/internal/handlers"
 	"miningpet/internal/services"
 	"miningpet/pkg/websocket"
@@ -22,6 +23,23 @@ func main() {
 	// 设置生产环境模式
 	if os.Getenv("GIN_MODE") == "" {
 		gin.SetMode(gin.ReleaseMode)
+	}
+
+	// 初始化数据库
+	log.Println("Initializing database...")
+	if err := database.Initialize(); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	// 执行数据库迁移
+	if err := database.Migrate(); err != nil {
+		log.Fatalf("Failed to migrate database: %v", err)
+	}
+
+	// 清理旧事件（保留最近1000条）
+	if err := database.CleanupOldEvents(1000); err != nil {
+		log.Printf("Warning: failed to cleanup old events: %v", err)
 	}
 
 	petService := services.NewPetService()
@@ -68,7 +86,17 @@ func main() {
 
 	// 健康检查端点
 	r.GET("/health", func(c *gin.Context) {
-		c.String(200, "healthy")
+		if err := database.Health(); err != nil {
+			c.JSON(500, gin.H{
+				"status": "unhealthy",
+				"error":  err.Error(),
+			})
+			return
+		}
+		c.JSON(200, gin.H{
+			"status":   "healthy",
+			"database": "connected",
+		})
 	})
 
 	// 获取端口配置，默认8081用于容器内部
