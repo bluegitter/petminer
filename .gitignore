@@ -33,6 +33,9 @@ yarn-error.log*
 *.swp
 *.swo
 
+# Claude Code
+.claude/
+
 # 操作系统
 Thumbs.db
 ehthumbs.db
