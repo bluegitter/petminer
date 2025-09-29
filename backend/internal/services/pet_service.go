@@ -15,20 +15,36 @@ type PetService struct {
 	events   []models.Event
 	mutex    sync.RWMutex
 	eventsCh chan models.Event
+	aiEngine *AIEngine
+	activePets map[string]*time.Ticker // 活跃的宠物和它们的ticker
 }
 
 func NewPetService() *PetService {
-	return &PetService{
-		pets:     make(map[string]*models.Pet),
-		events:   make([]models.Event, 0),
-		mutex:    sync.RWMutex{},
-		eventsCh: make(chan models.Event, 100),
+	ps := &PetService{
+		pets:       make(map[string]*models.Pet),
+		events:     make([]models.Event, 0),
+		mutex:      sync.RWMutex{},
+		eventsCh:   make(chan models.Event, 100),
+		aiEngine:   NewAIEngine(),
+		activePets: make(map[string]*time.Ticker),
 	}
+	
+	// 启动全局AI循环
+	go ps.runGlobalAI()
+	
+	return ps
 }
 
-func (ps *PetService) CreatePet(ownerName string) *models.Pet {
+func (ps *PetService) CreatePet(ownerName string) (*models.Pet, error) {
 	ps.mutex.Lock()
 	defer ps.mutex.Unlock()
+
+	// 检查该用户是否已经有宠物
+	for _, existingPet := range ps.pets {
+		if existingPet.Owner == ownerName {
+			return nil, fmt.Errorf("用户 %s 已经拥有宠物 %s，每位训练师只能拥有一只宠物", ownerName, existingPet.Name)
+		}
+	}
 
 	pet := models.NewPet(ownerName)
 	ps.pets[pet.ID] = pet
@@ -44,7 +60,11 @@ func (ps *PetService) CreatePet(ownerName string) *models.Pet {
 	}
 
 	ps.addEvent(event)
-	return pet
+	
+	// 启动该宠物的AI循环
+	ps.startPetAI(pet)
+	
+	return pet, nil
 }
 
 func (ps *PetService) GetPet(petID string) (*models.Pet, bool) {
@@ -228,4 +248,548 @@ func (ps *PetService) addEvent(event models.Event) {
 	case ps.eventsCh <- event:
 	default:
 	}
+}
+
+// runGlobalAI 运行全局AI循环，管理宠物的属性衰减
+func (ps *PetService) runGlobalAI() {
+	ticker := time.NewTicker(30 * time.Second) // 每30秒执行一次
+	defer ticker.Stop()
+
+	for range ticker.C {
+		ps.mutex.Lock()
+		for _, pet := range ps.pets {
+			if pet.IsAlive() {
+				ps.updatePetAttributes(pet)
+			}
+		}
+		ps.mutex.Unlock()
+	}
+}
+
+// startPetAI 启动单个宠物的AI循环
+func (ps *PetService) startPetAI(pet *models.Pet) {
+	if _, exists := ps.activePets[pet.ID]; exists {
+		return // 已经启动了
+	}
+
+	ticker := time.NewTicker(15 * time.Second) // 每15秒决策一次
+	ps.activePets[pet.ID] = ticker
+
+	go func() {
+		defer ticker.Stop()
+		for range ticker.C {
+			ps.mutex.Lock()
+			currentPet, exists := ps.pets[pet.ID]
+			if !exists || !currentPet.IsAlive() {
+				delete(ps.activePets, pet.ID)
+				ps.mutex.Unlock()
+				return
+			}
+
+			// 如果宠物在忙碌状态，跳过此次决策
+			if currentPet.Status != models.StatusIdle {
+				ps.mutex.Unlock()
+				continue
+			}
+
+			// AI决策
+			action := ps.aiEngine.DecideNextAction(currentPet)
+			ps.executeAction(currentPet, action)
+			ps.mutex.Unlock()
+		}
+	}()
+}
+
+// updatePetAttributes 更新宠物属性（自然衰减）
+func (ps *PetService) updatePetAttributes(pet *models.Pet) {
+	// 体力自然衰减
+	if pet.Energy > 0 {
+		energyLoss := 2
+		if pet.Status == models.StatusExploring || pet.Status == models.StatusFighting {
+			energyLoss = 5
+		}
+		pet.ConsumeEnergy(energyLoss)
+	}
+
+	// 饱食度自然衰减
+	if pet.Hunger > 0 {
+		hungerLoss := 3
+		if pet.Status == models.StatusExploring {
+			hungerLoss = 5
+		}
+		pet.ConsumeHunger(hungerLoss)
+	}
+
+	// 社交度缓慢衰减
+	if pet.Social > 0 && pet.Status != models.StatusSocializing {
+		pet.DecreaseSocial(1)
+	}
+
+	// 如果饱食度太低，影响健康
+	if pet.Hunger < 20 && pet.Health > 0 {
+		pet.TakeDamage(5)
+		ps.addEvent(models.Event{
+			ID:        uuid.New().String(),
+			PetID:     pet.ID,
+			PetName:   pet.Name,
+			Type:      models.EventReward,
+			Message:   fmt.Sprintf("[%s] 因为饥饿失去了5点生命值", pet.Name),
+			Timestamp: time.Now(),
+			Data:      models.EventData{Damage: 5},
+		})
+	}
+}
+
+// executeAction 执行AI决定的行为
+func (ps *PetService) executeAction(pet *models.Pet, action Action) {
+	switch action.Type {
+	case ActionExplore:
+		ps.executeExploreAction(pet, action)
+	case ActionRest:
+		ps.executeRestAction(pet, action)
+	case ActionSocialize:
+		ps.executeSocializeAction(pet, action)
+	case ActionEat:
+		ps.executeEatAction(pet, action)
+	case ActionIdle:
+		// 空闲状态，不需要特殊处理
+	}
+}
+
+// executeExploreAction 执行探索行为
+func (ps *PetService) executeExploreAction(pet *models.Pet, action Action) {
+	pet.Status = models.StatusExploring
+	
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventExplore,
+		Message:   fmt.Sprintf("[%s] %s", pet.Name, action.Reason),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Location: pet.Location},
+	}
+	ps.addEvent(event)
+
+	// 延迟执行探索结果
+	go func() {
+		time.Sleep(time.Duration(action.Duration) * time.Second)
+		ps.mutex.Lock()
+		if pet.Status == models.StatusExploring {
+			ps.processExploreResult(pet)
+		}
+		ps.mutex.Unlock()
+	}()
+}
+
+// executeRestAction 执行休息行为
+func (ps *PetService) executeRestAction(pet *models.Pet, action Action) {
+	pet.Status = models.StatusResting
+	
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventReward,
+		Message:   fmt.Sprintf("[%s] %s", pet.Name, action.Reason),
+		Timestamp: time.Now(),
+	}
+	ps.addEvent(event)
+
+	go func() {
+		time.Sleep(time.Duration(action.Duration) * time.Second)
+		ps.mutex.Lock()
+		if pet.Status == models.StatusResting {
+			restoreAmount := 20 + rand.Intn(20)
+			pet.RestoreEnergy(restoreAmount)
+			pet.Heal(10)
+			pet.Status = models.StatusIdle
+			
+			ps.addEvent(models.Event{
+				ID:        uuid.New().String(),
+				PetID:     pet.ID,
+				PetName:   pet.Name,
+				Type:      models.EventReward,
+				Message:   fmt.Sprintf("[%s] 休息完毕，恢复了%d点体力", pet.Name, restoreAmount),
+				Timestamp: time.Now(),
+			})
+		}
+		ps.mutex.Unlock()
+	}()
+}
+
+// executeSocializeAction 执行社交行为
+func (ps *PetService) executeSocializeAction(pet *models.Pet, action Action) {
+	pet.Status = models.StatusSocializing
+	
+	// 寻找其他宠物进行社交
+	var socialPartner *models.Pet
+	for _, otherPet := range ps.pets {
+		if otherPet.ID != pet.ID && otherPet.IsAlive() {
+			socialPartner = otherPet
+			break
+		}
+	}
+	
+	var message string
+	if socialPartner != nil {
+		message = fmt.Sprintf("[%s] 与 %s 愉快地交流", pet.Name, socialPartner.Name)
+		pet.AddFriend(socialPartner.Owner)
+		socialPartner.AddFriend(pet.Owner)
+	} else {
+		message = fmt.Sprintf("[%s] %s", pet.Name, action.Reason)
+	}
+	
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventSocial,
+		Message:   message,
+		Timestamp: time.Now(),
+	}
+	ps.addEvent(event)
+
+	go func() {
+		time.Sleep(time.Duration(action.Duration) * time.Second)
+		ps.mutex.Lock()
+		if pet.Status == models.StatusSocializing {
+			socialGain := 15 + rand.Intn(20)
+			pet.IncreaseSocial(socialGain)
+			pet.Status = models.StatusIdle
+			
+			ps.addEvent(models.Event{
+				ID:        uuid.New().String(),
+				PetID:     pet.ID,
+				PetName:   pet.Name,
+				Type:      models.EventSocial,
+				Message:   fmt.Sprintf("[%s] 社交结束，心情变好了", pet.Name),
+				Timestamp: time.Now(),
+			})
+		}
+		ps.mutex.Unlock()
+	}()
+}
+
+// executeEatAction 执行进食行为
+func (ps *PetService) executeEatAction(pet *models.Pet, action Action) {
+	if pet.Coins < 10 {
+		// 没钱买食物，寻找免费食物
+		event := models.Event{
+			ID:        uuid.New().String(),
+			PetID:     pet.ID,
+			PetName:   pet.Name,
+			Type:      models.EventReward,
+			Message:   fmt.Sprintf("[%s] 寻找免费的食物...", pet.Name),
+			Timestamp: time.Now(),
+		}
+		ps.addEvent(event)
+		
+		feedAmount := 10 + rand.Intn(15)
+		pet.Feed(feedAmount)
+	} else {
+		// 花钱买食物
+		cost := 10 + rand.Intn(10)
+		if pet.Coins >= cost {
+			pet.Coins -= cost
+			feedAmount := 25 + rand.Intn(20)
+			pet.Feed(feedAmount)
+			
+			event := models.Event{
+				ID:        uuid.New().String(),
+				PetID:     pet.ID,
+				PetName:   pet.Name,
+				Type:      models.EventReward,
+				Message:   fmt.Sprintf("[%s] 花费%d金币买了美味的食物，饱食度+%d", pet.Name, cost, feedAmount),
+				Timestamp: time.Now(),
+				Data:      models.EventData{Coins: -cost},
+			}
+			ps.addEvent(event)
+		}
+	}
+}
+
+// processExploreResult 处理探索结果（复用原有逻辑）
+func (ps *PetService) processExploreResult(pet *models.Pet) {
+	event := ps.generateRandomEvent(pet)
+	ps.addEvent(event)
+	pet.Status = models.StatusIdle
+	pet.LastActivity = time.Now()
+}
+
+// ExecuteCommand 通用命令执行接口
+func (ps *PetService) ExecuteCommand(petID, command string, params map[string]interface{}) (interface{}, error) {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return nil, fmt.Errorf("pet not found")
+	}
+
+	switch command {
+	case "rest":
+		return ps.executeRestCommand(pet, params)
+	case "feed":
+		return ps.executeFeedCommand(pet, params)
+	case "socialize":
+		return ps.executeSocializeCommand(pet, params)
+	case "explore":
+		return ps.executeExploreCommand(pet, params)
+	default:
+		return nil, fmt.Errorf("unknown command: %s", command)
+	}
+}
+
+// RestPet 让宠物休息
+func (ps *PetService) RestPet(petID string) error {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return fmt.Errorf("pet not found")
+	}
+
+	if !pet.CanRest() {
+		return fmt.Errorf("pet cannot rest at this time")
+	}
+
+	action := Action{
+		Type:     ActionRest,
+		Priority: 100,
+		Reason:   "主人命令休息",
+		Duration: 30,
+	}
+
+	ps.executeRestAction(pet, action)
+	return nil
+}
+
+// FeedPet 给宠物喂食
+func (ps *PetService) FeedPet(petID string, amount int) error {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return fmt.Errorf("pet not found")
+	}
+
+	if !pet.IsAlive() {
+		return fmt.Errorf("pet is not alive")
+	}
+
+	if amount <= 0 {
+		amount = 20
+	}
+
+	// 检查是否有足够的金币
+	cost := amount / 2
+	if pet.Coins < cost {
+		return fmt.Errorf("not enough coins to feed pet")
+	}
+
+	pet.Coins -= cost
+	pet.Feed(amount)
+
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventReward,
+		Message:   fmt.Sprintf("[%s] 主人喂食了%d点，消耗%d金币", pet.Name, amount, cost),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Coins: -cost},
+	}
+	ps.addEvent(event)
+
+	return nil
+}
+
+// SocializePet 让宠物社交
+func (ps *PetService) SocializePet(petID string) error {
+	ps.mutex.Lock()
+	defer ps.mutex.Unlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return fmt.Errorf("pet not found")
+	}
+
+	if !pet.CanSocialize() {
+		if !pet.IsAlive() {
+			return fmt.Errorf("宠物已倒下，无法社交（生命值: %d）", pet.Health)
+		}
+		if pet.Status != "等待中" {
+			return fmt.Errorf("宠物当前状态为 %s，无法社交", pet.Status)
+		}
+		if pet.Social >= 90 {
+			return fmt.Errorf("宠物社交需求已满足（社交度: %d/100），暂时不需要社交", pet.Social)
+		}
+		return fmt.Errorf("宠物暂时无法社交（状态: %s，社交度: %d，生命值: %d）", pet.Status, pet.Social, pet.Health)
+	}
+
+	action := Action{
+		Type:     ActionSocialize,
+		Priority: 100,
+		Reason:   "主人安排社交",
+		Duration: 40,
+	}
+
+	ps.executeSocializeAction(pet, action)
+	return nil
+}
+
+// GetPetStatus 获取宠物详细状态
+func (ps *PetService) GetPetStatus(petID string) (map[string]interface{}, error) {
+	ps.mutex.RLock()
+	defer ps.mutex.RUnlock()
+
+	pet, exists := ps.pets[petID]
+	if !exists {
+		return nil, fmt.Errorf("pet not found")
+	}
+
+	status := map[string]interface{}{
+		"basic_info": map[string]interface{}{
+			"id":           pet.ID,
+			"name":         pet.Name,
+			"owner":        pet.Owner,
+			"personality":  pet.Personality,
+			"level":        pet.Level,
+			"location":     pet.Location,
+			"status":       pet.Status,
+			"mood":         pet.Mood,
+			"created_at":   pet.CreatedAt,
+			"last_activity": pet.LastActivity,
+		},
+		"attributes": map[string]interface{}{
+			"health":      pet.Health,
+			"max_health":  pet.MaxHealth,
+			"energy":      pet.Energy,
+			"max_energy":  pet.MaxEnergy,
+			"hunger":      pet.Hunger,
+			"social":      pet.Social,
+			"attack":      pet.Attack,
+			"defense":     pet.Defense,
+			"experience":  pet.Experience,
+			"coins":       pet.Coins,
+		},
+		"social_data": map[string]interface{}{
+			"friends": pet.Friends,
+			"memory":  pet.Memory,
+		},
+		"capabilities": map[string]interface{}{
+			"can_explore":   pet.CanExplore(),
+			"can_rest":      pet.CanRest(),
+			"can_socialize": pet.CanSocialize(),
+			"is_alive":      pet.IsAlive(),
+		},
+	}
+
+	return status, nil
+}
+
+// 命令执行的具体实现
+func (ps *PetService) executeRestCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	if !pet.CanRest() {
+		return nil, fmt.Errorf("pet cannot rest at this time")
+	}
+
+	duration := 30
+	if d, ok := params["duration"].(float64); ok {
+		duration = int(d)
+	}
+
+	action := Action{
+		Type:     ActionRest,
+		Priority: 100,
+		Reason:   "接受命令休息",
+		Duration: duration,
+	}
+
+	ps.executeRestAction(pet, action)
+	return map[string]interface{}{
+		"action":   "rest",
+		"duration": duration,
+		"message":  fmt.Sprintf("%s 开始休息 %d 秒", pet.Name, duration),
+	}, nil
+}
+
+func (ps *PetService) executeFeedCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	amount := 20
+	if a, ok := params["amount"].(float64); ok {
+		amount = int(a)
+	}
+
+	cost := amount / 2
+	if pet.Coins < cost {
+		return nil, fmt.Errorf("not enough coins to feed pet")
+	}
+
+	pet.Coins -= cost
+	pet.Feed(amount)
+
+	event := models.Event{
+		ID:        uuid.New().String(),
+		PetID:     pet.ID,
+		PetName:   pet.Name,
+		Type:      models.EventReward,
+		Message:   fmt.Sprintf("[%s] 通过命令喂食了%d点，消耗%d金币", pet.Name, amount, cost),
+		Timestamp: time.Now(),
+		Data:      models.EventData{Coins: -cost},
+	}
+	ps.addEvent(event)
+
+	return map[string]interface{}{
+		"action":   "feed",
+		"amount":   amount,
+		"cost":     cost,
+		"message":  fmt.Sprintf("%s 进食了 %d 点", pet.Name, amount),
+	}, nil
+}
+
+func (ps *PetService) executeSocializeCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	if !pet.CanSocialize() {
+		return nil, fmt.Errorf("pet cannot socialize at this time")
+	}
+
+	action := Action{
+		Type:     ActionSocialize,
+		Priority: 100,
+		Reason:   "接受命令社交",
+		Duration: 40,
+	}
+
+	ps.executeSocializeAction(pet, action)
+	return map[string]interface{}{
+		"action":  "socialize",
+		"message": fmt.Sprintf("%s 开始社交", pet.Name),
+	}, nil
+}
+
+func (ps *PetService) executeExploreCommand(pet *models.Pet, params map[string]interface{}) (interface{}, error) {
+	if !pet.CanExplore() {
+		return nil, fmt.Errorf("pet cannot explore at this time")
+	}
+
+	direction := "未知方向"
+	if d, ok := params["direction"].(string); ok {
+		direction = d
+	}
+
+	action := Action{
+		Type:     ActionExplore,
+		Priority: 100,
+		Reason:   fmt.Sprintf("接受命令向%s探索", direction),
+		Duration: 60,
+	}
+
+	ps.executeExploreAction(pet, action)
+	return map[string]interface{}{
+		"action":    "explore",
+		"direction": direction,
+		"message":   fmt.Sprintf("%s 开始向 %s 探索", pet.Name, direction),
+	}, nil
 }
