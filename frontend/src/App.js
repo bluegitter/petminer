@@ -30,7 +30,15 @@ function App() {
     checkTabletSize();
     window.addEventListener('resize', checkTabletSize);
     
-    return () => window.removeEventListener('resize', checkTabletSize);
+    // 定期刷新宠物状态（每30秒）
+    const statusRefreshInterval = setInterval(() => {
+      loadPets();
+    }, 30000);
+    
+    return () => {
+      window.removeEventListener('resize', checkTabletSize);
+      clearInterval(statusRefreshInterval);
+    };
   }, []);
 
   const loadPets = async () => {
@@ -72,7 +80,13 @@ function App() {
   const handleStartExploration = async (petId) => {
     try {
       await petAPI.startExploration(petId);
+      // 立即更新宠物状态
       await loadPets();
+      
+      // 3秒后再次更新，确保状态同步
+      setTimeout(async () => {
+        await loadPets();
+      }, 3000);
     } catch (error) {
       console.error('开始探索失败:', error);
     }

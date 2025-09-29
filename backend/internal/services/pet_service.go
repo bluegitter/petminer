@@ -126,9 +126,8 @@ func (ps *PetService) StartExploration(petID string) error {
 		return fmt.Errorf("pet is already exploring")
 	}
 
-	// 不再启动探索循环，让AI来控制探索行为
-	// 这里只是把状态设为空闲，让AI决策系统接管
-	pet.Status = models.StatusIdle
+	// 设置为探索状态，让AI决策系统接管
+	pet.Status = models.StatusExploring
 	pet.LastActivity = time.Now()
 	
 	// 发送一个提示消息
@@ -137,11 +136,22 @@ func (ps *PetService) StartExploration(petID string) error {
 		PetID:     pet.ID,
 		PetName:   pet.Name,
 		Type:      models.EventExplore,
-		Message:   fmt.Sprintf("[%s] 收到探索指令，正在评估周围环境...", pet.Name),
+		Message:   fmt.Sprintf("[%s] 收到探索指令，开始探索冒险...", pet.Name),
 		Timestamp: time.Now(),
 		Data:      models.EventData{Location: pet.Location},
 	}
 	ps.addEvent(event)
+	
+	// 立即触发一次AI决策，让宠物开始探索行为
+	go func() {
+		time.Sleep(2 * time.Second) // 短暂延迟，让用户看到状态变化
+		ps.mutex.Lock()
+		if currentPet, exists := ps.pets[pet.ID]; exists && currentPet.Status == models.StatusExploring {
+			action := ps.aiEngine.DecideNextAction(currentPet)
+			ps.executeAction(currentPet, action)
+		}
+		ps.mutex.Unlock()
+	}()
 	
 	return nil
 }
@@ -336,8 +346,8 @@ func (ps *PetService) startPetAI(pet *models.Pet) {
 				return
 			}
 
-			// 如果宠物在忙碌状态（包括探索中），跳过此次决策
-			if currentPet.Status != models.StatusIdle && currentPet.Status != "等待中" {
+			// 如果宠物在忙碌状态，跳过此次决策（但探索状态下允许决策）
+			if currentPet.Status != models.StatusIdle && currentPet.Status != "等待中" && currentPet.Status != models.StatusExploring {
 				ps.mutex.Unlock()
 				continue
 			}
