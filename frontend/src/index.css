@@ -318,31 +318,44 @@ body {
   height: 130px; /* 移动端CLI内容高度 = CLI面板高度 - 标题栏高度(40px) */
 }
 
-/* 平板端优化 */
-@media (min-width: 768px) {
+/* 平板端优化 - 两个面板垂直排列需要更小高度 */
+@media (min-width: 768px) and (max-width: 1023px) {
   .responsive-terminal-grid {
-    min-height: 600px;
+    min-height: 720px !important; /* 两个面板总高度 */
   }
   
-  .responsive-terminal-panel {
-    height: 600px;
+  .responsive-terminal-panel,
+  div.responsive-terminal-panel {
+    height: 350px !important; /* 日志面板高度 */
+    max-height: 350px !important;
   }
   
-  .responsive-cli-panel {
-    height: 600px; /* 平板端CLI恢复与日志面板同等高度 */
+  .responsive-cli-panel,
+  div.responsive-cli-panel {
+    height: 350px !important; /* CLI面板高度 */
+    max-height: 350px !important;
   }
   
   .responsive-terminal-content {
-    height: 560px;
+    height: 310px !important; /* 日志内容高度 */
+    max-height: 310px !important;
   }
   
   .responsive-cli-content {
-    height: 560px; /* 平板端CLI内容恢复与日志内容同等高度 */
+    height: 310px !important; /* CLI内容高度 */
+    max-height: 310px !important;
+  }
+  
+  /* 确保内层容器也遵循高度限制 */
+  .responsive-terminal-panel .terminal-enhanced,
+  .responsive-cli-panel .cli-enhanced {
+    height: 100% !important;
+    max-height: 350px !important;
   }
 }
 
 /* 笔记本电脑端优化 */
-@media (min-width: 1024px) {
+@media (min-width: 1024px) and (max-width: 1279px) {
   .responsive-terminal-grid {
     min-height: 700px;
   }
@@ -365,7 +378,7 @@ body {
 }
 
 /* 大屏桌面端优化 */
-@media (min-width: 1280px) {
+@media (min-width: 1280px) and (max-width: 1535px) {
   .responsive-terminal-grid {
     min-height: 750px;
   }

@@ -105,8 +105,7 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="flex justify-between text-xs mb-1">
             <div className="flex items-center gap-1">
               <Heart className="w-3 h-3 text-red-400" />
-              <span className="hidden md:inline">生命值</span>
-              <span className="md:hidden">HP</span>
+              <span>生命值</span>
             </div>
             <span className="font-mono text-xs">{pet.health}/{pet.max_health}</span>
           </div>
@@ -127,8 +126,7 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="flex justify-between text-xs mb-1">
             <div className="flex items-center gap-1">
               <Zap className="w-3 h-3 text-yellow-400" />
-              <span className="hidden md:inline">体力</span>
-              <span className="md:hidden">EN</span>
+              <span>体力</span>
             </div>
             <span className="font-mono text-xs">{pet.energy || 100}/{pet.max_energy || 100}</span>
           </div>
@@ -145,8 +143,7 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="flex justify-between text-xs mb-1">
             <div className="flex items-center gap-1">
               <span className="text-xs">🍖</span>
-              <span className="hidden md:inline">饱食</span>
-              <span className="md:hidden">食</span>
+              <span>饱食度</span>
             </div>
             <span className="font-mono text-xs">{pet.hunger || 80}/100</span>
           </div>
@@ -161,8 +158,7 @@ const PetCard = ({ pet, onStartExploration }) => {
         {/* 经验值条 */}
         <div>
           <div className="flex justify-between text-xs mb-1">
-            <span className="hidden md:inline">经验值</span>
-            <span className="md:hidden">EXP</span>
+            <span>经验值</span>
             <span className="font-mono text-xs">{pet.experience}/{pet.level * 100}</span>
           </div>
           <div className="w-full bg-gray-700 rounded-full h-1 md:h-1.5 overflow-hidden">

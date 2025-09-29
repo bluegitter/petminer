@@ -14,11 +14,23 @@ function App() {
   const [selectedPet, setSelectedPet] = useState(null);
   const [loading, setLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
   const { events, connectionStatus } = useWebSocket();
 
   useEffect(() => {
     loadPets();
     loadInitialEvents();
+    
+    // 检测屏幕尺寸
+    const checkTabletSize = () => {
+      const width = window.innerWidth;
+      setIsTablet(width >= 768 && width <= 1279);
+    };
+    
+    checkTabletSize();
+    window.addEventListener('resize', checkTabletSize);
+    
+    return () => window.removeEventListener('resize', checkTabletSize);
   }, []);
 
   const loadPets = async () => {
@@ -229,7 +241,10 @@ function App() {
           <div className="lg:col-span-7 xl:col-span-8 animate-slide-in-right">
             <div className="grid grid-cols-1 gap-3 xl:grid-cols-2 md:gap-6 responsive-terminal-grid">
               {/* 事件日志 */}
-              <div className="relative particle-bg responsive-terminal-panel">
+              <div className="relative particle-bg responsive-terminal-panel" 
+                   style={{ 
+                     height: isTablet ? '350px' : undefined
+                   }}>
                 <div className="absolute rounded-lg -inset-1 bg-gradient-to-r from-green-400 to-terminal-accent blur opacity-20 animate-glow"></div>
                 <div className="relative terminal-enhanced" style={{ height: '100%' }}>
                   <Terminal events={events} title="宠物冒险日记" />
@@ -241,7 +256,10 @@ function App() {
               </div>
               
               {/* CLI终端 */}
-              <div className="relative responsive-cli-panel md:responsive-terminal-panel">
+              <div className="relative responsive-cli-panel"
+                   style={{ 
+                     height: isTablet ? '350px' : undefined
+                   }}>
                 <div className="absolute rounded-lg -inset-1 bg-gradient-to-r from-blue-400 to-purple-500 blur opacity-20 animate-glow"></div>
                 <div className="relative cli-enhanced" style={{ height: '100%' }}>
                   <CLITerminal 
