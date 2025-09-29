@@ -2,8 +2,8 @@
 
 ## 基础信息
 
-- **基础URL**: `http://localhost:8080/api/v1`
-- **WebSocket**: `ws://localhost:8080/ws`
+- **基础URL**: `http://localhost:8081/api/v1`
+- **WebSocket**: `ws://localhost:8081/ws`
 
 ## API端点
 
@@ -121,7 +121,7 @@
 
 ## WebSocket 事件
 
-连接到 `ws://localhost:8080/ws` 以接收实时事件更新。
+连接到 `ws://localhost:8081/ws` 以接收实时事件更新。
 
 **消息格式:**
 ```json
