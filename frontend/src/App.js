@@ -110,6 +110,10 @@ function App() {
           await petAPI.socializePet(params.petId);
           await loadPets();
           break;
+        case 'addcoins':
+          await petAPI.executeCommand(params.petId, 'addcoins', { amount: params.amount });
+          await loadPets();
+          break;
         default:
           console.log('未实现的命令:', command, params);
       }
