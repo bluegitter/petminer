@@ -42,3 +42,194 @@ body {
   0%, 50% { opacity: 1; }
   51%, 100% { opacity: 0; }
 }
+
+@keyframes glow {
+  0%, 100% { 
+    box-shadow: 0 0 5px rgba(0, 255, 0, 0.5); 
+  }
+  50% { 
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.8), 0 0 30px rgba(0, 255, 0, 0.6); 
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scale {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+@keyframes rainbow {
+  0% { border-color: #ff0000; }
+  16% { border-color: #ff8000; }
+  33% { border-color: #ffff00; }
+  50% { border-color: #00ff00; }
+  66% { border-color: #0000ff; }
+  83% { border-color: #8000ff; }
+  100% { border-color: #ff0000; }
+}
+
+/* 自定义动画类 */
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.6s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.6s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.6s ease-out;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.8s ease-out;
+}
+
+.animate-scale {
+  animation: scale 2s ease-in-out infinite;
+}
+
+.animate-rainbow-border {
+  animation: rainbow 3s linear infinite;
+}
+
+/* 悬浮卡片效果 */
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-5px) scale(1.02);
+  box-shadow: 0 10px 25px rgba(0, 255, 0, 0.3);
+}
+
+/* 光晕文字效果 */
+.text-glow {
+  text-shadow: 0 0 10px currentColor;
+}
+
+/* 渐变边框效果 */
+.gradient-border {
+  background: linear-gradient(45deg, #00ff00, #ffff00, #00ff00);
+  background-size: 200% 200%;
+  animation: rainbow 3s ease infinite;
+}
+
+/* 粒子效果背景 */
+.particle-bg {
+  position: relative;
+  overflow: hidden;
+}
+
+.particle-bg::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 80%, rgba(0, 255, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255, 255, 0, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(0, 255, 255, 0.1) 0%, transparent 50%);
+  animation: float 6s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* 终端效果增强 */
+.terminal-enhanced {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0.9) 0%, rgba(0, 20, 0, 0.9) 100%);
+  border: 2px solid #00ff00;
+  box-shadow: 
+    inset 0 0 20px rgba(0, 255, 0, 0.1),
+    0 0 20px rgba(0, 255, 0, 0.3);
+}
+
+.terminal-enhanced::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff00, transparent);
+  animation: slideInLeft 2s infinite;
+}
+
+/* 数据流动效果 */
+@keyframes dataFlow {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100vw); }
+}
+
+.data-stream {
+  position: fixed;
+  top: 20%;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  background: #00ff00;
+  box-shadow: 0 0 10px #00ff00;
+  animation: dataFlow 8s linear infinite;
+  opacity: 0.6;
+}
+
+/* 响应式动画 */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
