@@ -357,69 +357,69 @@ body {
 /* 笔记本电脑端优化 */
 @media (min-width: 1024px) and (max-width: 1279px) {
   .responsive-terminal-grid {
-    min-height: 700px;
+    min-height: 500px;
   }
   
   .responsive-terminal-panel {
-    height: 700px;
+    height: 500px;
   }
   
   .responsive-cli-panel {
-    height: 700px;
+    height: 500px;
   }
   
   .responsive-terminal-content {
-    height: 660px;
+    height: 460px;
   }
   
   .responsive-cli-content {
-    height: 660px;
+    height: 460px;
   }
 }
 
 /* 大屏桌面端优化 */
 @media (min-width: 1280px) and (max-width: 1535px) {
   .responsive-terminal-grid {
-    min-height: 750px;
+    min-height: 580px;
   }
   
   .responsive-terminal-panel {
-    height: 750px;
+    height: 580px;
   }
   
   .responsive-cli-panel {
-    height: 750px;
+    height: 580px;
   }
   
   .responsive-terminal-content {
-    height: 710px;
+    height: 540px;
   }
   
   .responsive-cli-content {
-    height: 710px;
+    height: 540px;
   }
 }
 
 /* 超大屏幕优化 */
 @media (min-width: 1536px) {
   .responsive-terminal-grid {
-    min-height: 800px;
+    min-height: 650px;
   }
   
   .responsive-terminal-panel {
-    height: 800px;
+    height: 650px;
   }
   
   .responsive-cli-panel {
-    height: 800px;
+    height: 650px;
   }
   
   .responsive-terminal-content {
-    height: 760px;
+    height: 610px;
   }
   
   .responsive-cli-content {
-    height: 760px;
+    height: 610px;
   }
 }
 

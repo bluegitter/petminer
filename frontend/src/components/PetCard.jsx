@@ -47,14 +47,14 @@ const PetCard = ({ pet, onStartExploration }) => {
 
   return (
     <div className="bg-black border border-terminal-text rounded-lg shadow-xl relative overflow-hidden 
-                    p-6 md:p-6
-                    lg:p-6">
+                    p-3 md:p-4
+                    lg:p-4">
       {/* 背景装饰 */}
       <div className="absolute top-0 right-0 w-32 h-32 bg-terminal-accent opacity-5 rounded-full -translate-y-16 translate-x-16"></div>
       
       {/* 宠物头部信息 - 紧凑模式 */}
-      <div className="relative z-10 mb-3 md:mb-6">
-        <div className="flex items-center justify-between mb-2 md:mb-3">
+      <div className="relative z-10 mb-1">
+        <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2 md:gap-3">
             <div className="text-2xl md:text-3xl animate-bounce">{getPersonalityIcon(pet.personality)}</div>
             <div>
@@ -99,10 +99,10 @@ const PetCard = ({ pet, onStartExploration }) => {
       </div>
 
       {/* 状态条显示 - 紧凑显示 */}
-      <div className="mb-3 md:mb-4 space-y-1 md:space-y-2">
+      <div className="mb-1 space-y-1">
         {/* 生命值条 */}
         <div>
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-xs mb-0.5">
             <div className="flex items-center gap-1">
               <Heart className="w-3 h-3 text-red-400" />
               <span>生命值</span>
@@ -123,7 +123,7 @@ const PetCard = ({ pet, onStartExploration }) => {
 
         {/* 体力值条 */}
         <div>
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-xs mb-0.5">
             <div className="flex items-center gap-1">
               <Zap className="w-3 h-3 text-yellow-400" />
               <span>体力</span>
@@ -140,7 +140,7 @@ const PetCard = ({ pet, onStartExploration }) => {
 
         {/* 饱食度条 */}
         <div>
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-xs mb-0.5">
             <div className="flex items-center gap-1">
               <span className="text-xs">🍖</span>
               <span>饱食度</span>
@@ -157,7 +157,7 @@ const PetCard = ({ pet, onStartExploration }) => {
 
         {/* 经验值条 */}
         <div>
-          <div className="flex justify-between text-xs mb-1">
+          <div className="flex justify-between text-xs mb-0.5">
             <span>经验值</span>
             <span className="font-mono text-xs">{pet.experience}/{pet.level * 100}</span>
           </div>
@@ -171,9 +171,9 @@ const PetCard = ({ pet, onStartExploration }) => {
       </div>
 
       {/* 属性一行显示 - 攻击力、防御力、金币 */}
-      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-3 md:mb-4">
-        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-blue-400 transition-colors">
-          <div className="flex items-center gap-1 md:gap-2 mb-1">
+      <div className="grid grid-cols-3 gap-2 md:gap-3 mb-1">
+        <div className="bg-gray-900 rounded-lg p-1.5 md:p-2 border border-gray-700 hover:border-blue-400 transition-colors">
+          <div className="flex items-center gap-1 md:gap-2 mb-0.5">
             <Zap className="w-3 md:w-4 h-3 md:h-4 text-blue-400" />
             <span className="text-xs text-gray-400 hidden md:inline">攻击力</span>
             <span className="text-xs text-gray-400 md:hidden">攻击</span>
@@ -181,8 +181,8 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="text-sm md:text-lg font-bold text-blue-400">{pet.attack}</div>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-green-400 transition-colors">
-          <div className="flex items-center gap-1 md:gap-2 mb-1">
+        <div className="bg-gray-900 rounded-lg p-1.5 md:p-2 border border-gray-700 hover:border-green-400 transition-colors">
+          <div className="flex items-center gap-1 md:gap-2 mb-0.5">
             <Shield className="w-3 md:w-4 h-3 md:h-4 text-green-400" />
             <span className="text-xs text-gray-400 hidden md:inline">防御力</span>
             <span className="text-xs text-gray-400 md:hidden">防御</span>
@@ -190,8 +190,8 @@ const PetCard = ({ pet, onStartExploration }) => {
           <div className="text-sm md:text-lg font-bold text-green-400">{pet.defense}</div>
         </div>
 
-        <div className="bg-gray-900 rounded-lg p-2 md:p-3 border border-gray-700 hover:border-yellow-400 transition-colors">
-          <div className="flex items-center gap-1 md:gap-2 mb-1">
+        <div className="bg-gray-900 rounded-lg p-1.5 md:p-2 border border-gray-700 hover:border-yellow-400 transition-colors">
+          <div className="flex items-center gap-1 md:gap-2 mb-0.5">
             <Coins className="w-3 md:w-4 h-3 md:h-4 text-yellow-400" />
             <span className="text-xs text-gray-400 hidden md:inline">金币</span>
             <span className="text-xs text-gray-400 md:hidden">金币</span>
@@ -201,7 +201,7 @@ const PetCard = ({ pet, onStartExploration }) => {
       </div>
 
       {/* 位置信息 - 移动端简化 */}
-      <div className="mb-3 md:mb-6 p-2 md:p-3 bg-purple-900 bg-opacity-30 rounded-lg border border-purple-500 border-opacity-30">
+      <div className="mb-1 p-2 bg-purple-900 bg-opacity-30 rounded-lg border border-purple-500 border-opacity-30">
         <div className="flex items-center gap-2">
           <MapPin className="w-3 md:w-4 h-3 md:h-4 text-purple-400" />
           <span className="text-xs md:text-sm text-gray-400 hidden md:inline">当前位置:</span>
