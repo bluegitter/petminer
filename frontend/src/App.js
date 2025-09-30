@@ -15,7 +15,28 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [logoError, setLogoError] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
+  const [initialEvents, setInitialEvents] = useState([]);
   const { events, connectionStatus } = useWebSocket();
+
+  // 合并并去重事件，按时间排序
+  const allEvents = React.useMemo(() => {
+    const eventMap = new Map();
+    
+    // 添加初始事件
+    initialEvents.forEach(event => {
+      eventMap.set(event.id, event);
+    });
+    
+    // 添加实时事件（会覆盖重复的）
+    events.forEach(event => {
+      eventMap.set(event.id, event);
+    });
+    
+    // 转换为数组并按时间排序
+    return Array.from(eventMap.values()).sort((a, b) => 
+      new Date(a.timestamp) - new Date(b.timestamp)
+    );
+  }, [initialEvents, events]);
 
   useEffect(() => {
     loadPets();
@@ -57,6 +78,7 @@ function App() {
     try {
       const response = await petAPI.getEvents(50);
       console.log('初始事件:', response.data.events);
+      setInitialEvents(response.data.events || []);
     } catch (error) {
       console.error('加载事件失败:', error);
     }
@@ -164,7 +186,7 @@ function App() {
             {/* 连接状态和统计 - 手机端简化 */}
             <div className="flex items-center gap-2 md:gap-6">
               <div className="hidden text-sm text-gray-400 lg:block">
-                活跃事件: <span className="font-bold text-terminal-accent">{events.length}</span>
+                活跃事件: <span className="font-bold text-terminal-accent">{allEvents.length}</span>
               </div>
               <div className="flex items-center gap-1 px-2 py-1 bg-black bg-opacity-50 border rounded-full md:gap-2 md:px-3 md:py-2 border-terminal-text">
                 {getConnectionStatusIcon()}
@@ -265,7 +287,7 @@ function App() {
                    }}>
                 <div className="absolute rounded-lg -inset-1 bg-gradient-to-r from-green-400 to-terminal-accent blur opacity-20 animate-glow"></div>
                 <div className="relative terminal-enhanced" style={{ height: '100%' }}>
-                  <Terminal events={events} title="宠物冒险日记" />
+                  <Terminal events={allEvents} title="宠物冒险日记" />
                 </div>
                 {/* 数据流效果 */}
                 <div className="data-stream" style={{animationDelay: '0s'}}></div>
