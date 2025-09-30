@@ -62,6 +62,10 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 		pet.Location = location
 		event.Message = fmt.Sprintf("[%s] 来到了%s，开始探索...", pet.Name, location)
 		event.Data.Location = location
+		
+		// 更新状态管理器中的位置和行动计数
+		ps.stateManager.UpdateLocation(pet.ID, location)
+		ps.stateManager.IncrementActionCount(pet.ID)
 
 	case models.EventBattle:
 		monster := models.Monsters[rand.Intn(len(models.Monsters))]
@@ -79,7 +83,13 @@ func (ps *PetService) generateRandomEvent(pet *models.Pet) models.Event {
 			}
 			pet.TakeDamage(damage)
 			event.Message = fmt.Sprintf("[%s] 被%s击败，受到%d点伤害", pet.Name, monster.Name, damage)
+			
+			// 更新血量状态
+			ps.stateManager.UpdateHP(pet.ID, pet.Health)
 		}
+		
+		// 增加行动计数
+		ps.stateManager.IncrementActionCount(pet.ID)
 		
 		event.Data.Enemy = monster.Name
 		event.Data.IsVictory = victory
@@ -175,8 +185,17 @@ func (ps *PetService) addEvent(event models.Event) {
 		}
 	}
 	
-	if err := ps.eventRepo.CreateEvent(&event); err != nil {
-		log.Printf("Warning: failed to save event to database: %v", err)
+	// 根据事件类型确定存储策略
+	priority := ps.strategyManager.Strategy.ClassifyEventData(&event)
+	
+	if ps.strategyManager.Strategy.ShouldPersist(priority) {
+		// 使用分层存储策略
+		ps.strategyManager.AddData(&event, priority)
+	}
+	
+	// 对于重要和关键事件，仍然使用批量写入作为备份
+	if priority == 0 || priority == 1 { // Critical=0, Important=1
+		ps.eventRepo.CreateEventBatch(&event)
 	}
 	
 	ps.events = append(ps.events, event)
