@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"miningpet/internal/models"
 	"time"
 
@@ -101,6 +102,18 @@ func (r *PetRepository) UpdatePet(pet *models.Pet) error {
 	return nil
 }
 
+// UpdatePetBatch 批量更新宠物（高性能）
+func (r *PetRepository) UpdatePetBatch(pet *models.Pet) {
+	if PetBatchManager != nil {
+		PetBatchManager.AddWrite(&PetBatchWrite{Pet: pet})
+	} else {
+		// 降级到同步写入
+		if err := r.UpdatePet(pet); err != nil {
+			log.Printf("Failed to update pet: %v", err)
+		}
+	}
+}
+
 // DeletePet 删除宠物
 func (r *PetRepository) DeletePet(id string) error {
 	if err := r.db.Where("id = ?", id).Delete(&DBPet{}).Error; err != nil {
@@ -132,6 +145,18 @@ func (r *EventRepository) CreateEvent(event *models.Event) error {
 	}
 
 	return nil
+}
+
+// CreateEventBatch 批量创建事件（高性能）
+func (r *EventRepository) CreateEventBatch(event *models.Event) {
+	if EventBatchManager != nil {
+		EventBatchManager.AddWrite(&EventBatchWrite{Event: event})
+	} else {
+		// 降级到同步写入
+		if err := r.CreateEvent(event); err != nil {
+			log.Printf("Failed to create event: %v", err)
+		}
+	}
 }
 
 // GetEventsByPetID 根据宠物ID获取事件
@@ -201,4 +226,67 @@ func (r *EventRepository) GetEventCount() (int64, error) {
 	}
 
 	return count, nil
+}
+
+// EventBatchWrite 事件批量写入操作
+type EventBatchWrite struct {
+	Event *models.Event
+}
+
+// Execute 执行事件批量写入
+func (ebw *EventBatchWrite) Execute(tx *gorm.DB) error {
+	dbEvent, err := ConvertToDBEvent(ebw.Event)
+	if err != nil {
+		return fmt.Errorf("failed to convert event: %w", err)
+	}
+
+	if err := tx.Create(dbEvent).Error; err != nil {
+		return fmt.Errorf("failed to create event: %w", err)
+	}
+
+	return nil
+}
+
+// PetBatchWrite 宠物批量写入操作
+type PetBatchWrite struct {
+	Pet *models.Pet
+}
+
+// Execute 执行宠物批量写入
+func (pbw *PetBatchWrite) Execute(tx *gorm.DB) error {
+	dbPet, err := ConvertToDBPet(pbw.Pet)
+	if err != nil {
+		return fmt.Errorf("failed to convert pet: %w", err)
+	}
+
+	if err := tx.Where("id = ?", pbw.Pet.ID).Updates(dbPet).Error; err != nil {
+		return fmt.Errorf("failed to update pet: %w", err)
+	}
+
+	return nil
+}
+
+// 全局批量写入管理器
+var (
+	EventBatchManager *BatchWriteManager
+	PetBatchManager   *BatchWriteManager
+)
+
+// InitializeBatchManagers 初始化批量写入管理器
+func InitializeBatchManagers() {
+	// 事件批量写入：每50条或每2秒刷新一次
+	EventBatchManager = NewBatchWriteManager(50, 2*time.Second)
+	
+	// 宠物批量写入：每20条或每5秒刷新一次（宠物更新频率较低）
+	PetBatchManager = NewBatchWriteManager(20, 5*time.Second)
+}
+
+// CloseBatchManagers 关闭批量写入管理器
+func CloseBatchManagers() {
+	if EventBatchManager != nil {
+		EventBatchManager.Stop()
+	}
+	if PetBatchManager != nil {
+		PetBatchManager.Stop()
+	}
 }
